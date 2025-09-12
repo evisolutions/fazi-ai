@@ -1,0 +1,14 @@
+*.~lock*
+
+*.xlsx
+*.xls
+
+!data/*.xlsx
+!data/*.xls
+
+
+node_modules/
+uploads/
+
+*.env
+venv/*
