@@ -302,6 +302,20 @@ const getTrzisteRecommendationsWithRank = (recommendations: any) => {
     trziste_name: getTrzisteName(trziste.trziste_id),
   }))
 }
+
+// Helper function to get risk color
+const getRiskColor = (riskLevel: string) => {
+  switch (riskLevel) {
+    case 'low':
+      return 'success'
+    case 'medium':
+      return 'warning'
+    case 'high':
+      return 'error'
+    default:
+      return 'grey'
+  }
+}
 </script>
 
 <template>
@@ -310,6 +324,7 @@ const getTrzisteRecommendationsWithRank = (recommendations: any) => {
       <v-tab :value="1" text="Parameters"></v-tab>
       <v-tab :value="2" text="Result"></v-tab>
       <v-tab :value="3" text="Best Performing"></v-tab>
+      <v-tab :value="4" text="Predictions & Recommendations"></v-tab>
     </v-tabs>
 
     <v-tabs-window v-model="tab">
@@ -711,6 +726,190 @@ const getTrzisteRecommendationsWithRank = (recommendations: any) => {
           </div>
         </v-container>
       </v-tabs-window-item>
+
+      <v-tabs-window-item :value="4">
+        <v-container fluid>
+          <div class="container d-flex justify-sm-center ga-5 mt-10">
+            <v-btn @click="simulateCalculate">Calculate</v-btn>
+          </div>
+        </v-container>
+
+        <v-container
+          class="container d-flex justify-sm-center ga-5 mt-10"
+          fluid
+          v-if="loading_data"
+        >
+          <v-progress-circular color="primary" indeterminate></v-progress-circular>
+        </v-container>
+
+        <v-container fluid v-if="result_data && result_data.calculated_data_by_group">
+          <div
+            class="container mb-15"
+            v-for="group in result_data.calculated_data_by_group"
+            :key="`predictions-${group.np_id}-${group.roi_ids.join('-')}`"
+          >
+            <div class="d-flex align-center ga-2 mb-4">
+              <span class="text-h6">ROIS:</span>
+              <span class="text-h6">
+                [
+                <span v-for="(roi_id, index) in group.roi_ids"
+                  >{{ gamba.getROILabelFromID(roi_id)
+                  }}{{ index !== group.roi_ids.length - 1 ? ', ' : '' }}</span
+                >
+                ]
+              </span>
+            </div>
+            <div class="d-flex align-center mb-6">
+              <span class="text-h6">NP:</span>
+              <span class="text-h6">{{ gamba.getNPLabelFromID(group.np_id) }}</span>
+            </div>
+
+            <!-- Predictions and Recommendations Cards -->
+            <v-row>
+              <!-- Promotion Recommendation Card -->
+              <v-col cols="12" md="4">
+                <v-card class="mb-4 prediction-card" theme="dark">
+                  <v-card-title class="text-h6 card-title">
+                    <v-icon class="mr-2">mdi-trending-up</v-icon>
+                    <span>Promotion Recommendation</span>
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="group['Promotion Recommendation']">
+                      <div class="mb-3">
+                        <span class="text-h5 font-weight-bold text-success">
+                          {{ formatNumber(group['Promotion Recommendation'].recommended_amount) }}
+                        </span>
+                        <span class="text-caption ml-2">recommended amount</span>
+                      </div>
+                      <div class="mb-2">
+                        <v-chip
+                          :color="getRiskColor(group['Promotion Recommendation'].risk_level)"
+                          size="small"
+                          class="mr-2"
+                        >
+                          {{ group['Promotion Recommendation'].risk_level }} risk
+                        </v-chip>
+                        <v-chip color="info" size="small">
+                          {{ formatNumber(group['Promotion Recommendation'].confidence) }}%
+                          confidence
+                        </v-chip>
+                      </div>
+                      <p class="text-caption mb-2">
+                        {{ group['Promotion Recommendation'].reasoning }}
+                      </p>
+                      <p class="text-caption">
+                        Coefficient of Variation:
+                        {{ group['Promotion Recommendation'].coefficient_of_variation }}
+                      </p>
+                    </div>
+                    <div v-else class="text-center">
+                      <v-alert type="info" variant="tonal" density="compact">
+                        No recommendation available
+                      </v-alert>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- GGR Prediction Card -->
+              <v-col cols="12" md="4">
+                <v-card class="mb-4 prediction-card" theme="dark">
+                  <v-card-title class="text-h6 card-title">
+                    <v-icon class="mr-2">mdi-chart-line</v-icon>
+                    <span>GGR Prediction</span>
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="group['GGR Prediction']">
+                      <div class="mb-3">
+                        <span class="text-h5 font-weight-bold text-primary">
+                          {{ formatNumber(group['GGR Prediction'].predicted_ggr) }}
+                        </span>
+                        <span class="text-caption ml-2">predicted GGR</span>
+                      </div>
+                      <div class="mb-2">
+                        <v-chip color="info" size="small">
+                          {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                        </v-chip>
+                      </div>
+                      <div class="mb-2">
+                        <span class="text-caption">95% Confidence Interval:</span>
+                        <div class="text-caption">
+                          {{ formatNumber(group['GGR Prediction'].confidence_interval.lower) }} -
+                          {{ formatNumber(group['GGR Prediction'].confidence_interval.upper) }}
+                        </div>
+                      </div>
+                      <p class="text-caption mb-2">
+                        {{ group['GGR Prediction'].reasoning }}
+                      </p>
+                      <p class="text-caption">
+                        Relative Std Dev: {{ group['GGR Prediction'].relative_std_dev }}
+                      </p>
+                    </div>
+                    <div v-else class="text-center">
+                      <v-alert type="info" variant="tonal" density="compact">
+                        No prediction available
+                      </v-alert>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- NP Prediction Card -->
+              <v-col cols="12" md="4">
+                <v-card class="mb-4 prediction-card" theme="dark">
+                  <v-card-title class="text-h6 card-title">
+                    <v-icon class="mr-2">mdi-cash</v-icon>
+                    <span>NP Amount Prediction</span>
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="group['NP Prediction']">
+                      <div class="mb-3">
+                        <span class="text-h5 font-weight-bold text-warning">
+                          {{ formatNumber(group['NP Prediction'].predicted_np_amount) }}
+                        </span>
+                        <span class="text-caption ml-2">predicted NP amount</span>
+                      </div>
+                      <div class="mb-2">
+                        <v-chip color="info" size="small">
+                          {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                        </v-chip>
+                      </div>
+                      <div class="mb-2">
+                        <span class="text-caption">90% Confidence Interval:</span>
+                        <div class="text-caption">
+                          {{ formatNumber(group['NP Prediction'].confidence_interval.lower) }} -
+                          {{ formatNumber(group['NP Prediction'].confidence_interval.upper) }}
+                        </div>
+                      </div>
+                      <p class="text-caption mb-2">
+                        {{ group['NP Prediction'].reasoning }}
+                      </p>
+                      <p class="text-caption">
+                        Coefficient of Variation:
+                        {{ group['NP Prediction'].coefficient_of_variation }}
+                      </p>
+                    </div>
+                    <div v-else class="text-center">
+                      <v-alert type="info" variant="tonal" density="compact">
+                        No prediction available
+                      </v-alert>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </div>
+        </v-container>
+
+        <!-- No Data Message -->
+        <v-container fluid v-else-if="result_data && !result_data.calculated_data_by_group">
+          <div class="container text-center pa-8">
+            <v-alert type="warning" variant="tonal">
+              No prediction data available. Please run the calculation first.
+            </v-alert>
+          </div>
+        </v-container>
+      </v-tabs-window-item>
     </v-tabs-window>
   </main>
 </template>
@@ -750,5 +949,28 @@ const getTrzisteRecommendationsWithRank = (recommendations: any) => {
 
 .mb-15 {
   margin-bottom: 60px;
+}
+
+.prediction-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.prediction-card .v-card-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  white-space: normal !important;
+  line-height: 1.3 !important;
+  min-height: auto !important;
+}
+
+.card-title span {
+  display: inline-block;
+  word-wrap: break-word;
 }
 </style>

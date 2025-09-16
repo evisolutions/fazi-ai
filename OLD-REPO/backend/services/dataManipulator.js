@@ -835,6 +835,193 @@ class DataManipulator {
 
     return results;
   }
+
+  /**
+   * Generate promotion amount recommendation based on statistical analysis
+   * @param {Object} stats - Statistics object with average, median, stdDev
+   * @returns {Object} Recommendation with suggested amount and reasoning
+   */
+  generatePromotionRecommendation(stats) {
+    if (
+      !stats ||
+      stats.average === null ||
+      stats.median === null ||
+      stats.stdDev === null
+    ) {
+      return {
+        recommended_amount: null,
+        confidence: 0,
+        reasoning: "Insufficient data for recommendation",
+        risk_level: "unknown",
+      };
+    }
+
+    const { average, median, stdDev } = stats;
+
+    // Calculate coefficient of variation to assess risk
+    const coefficientOfVariation = stdDev / average;
+
+    // Determine risk level based on coefficient of variation
+    let riskLevel = "low";
+    if (coefficientOfVariation > 0.5) riskLevel = "high";
+    else if (coefficientOfVariation > 0.3) riskLevel = "medium";
+
+    // Calculate confidence based on data consistency
+    const confidence = Math.max(
+      0,
+      Math.min(100, 100 - coefficientOfVariation * 100)
+    );
+
+    // Recommendation strategy: weighted average of median and mean, adjusted for risk
+    let recommendedAmount;
+    let reasoning;
+
+    if (riskLevel === "low") {
+      // Low risk: use average as primary recommendation
+      recommendedAmount = average;
+      reasoning = "Low risk scenario - using average promotion amount";
+    } else if (riskLevel === "medium") {
+      // Medium risk: blend median and average
+      recommendedAmount = median * 0.6 + average * 0.4;
+      reasoning =
+        "Medium risk scenario - balanced approach using median and average";
+    } else {
+      // High risk: use median as it's more robust to outliers
+      recommendedAmount = median;
+      reasoning = "High risk scenario - using median for stability";
+    }
+
+    // Apply conservative adjustment for high risk scenarios
+    if (riskLevel === "high") {
+      recommendedAmount *= 0.9; // 10% reduction for high risk
+      reasoning += " (10% reduction applied for risk mitigation)";
+    }
+
+    return {
+      recommended_amount: Math.round(recommendedAmount * 100) / 100,
+      confidence: Math.round(confidence * 100) / 100,
+      reasoning,
+      risk_level: riskLevel,
+      coefficient_of_variation:
+        Math.round(coefficientOfVariation * 1000) / 1000,
+    };
+  }
+
+  /**
+   * Generate GGR (Gross Revenue) prediction based on statistical analysis
+   * @param {Object} stats - Statistics object with average, median, stdDev
+   * @returns {Object} Prediction with estimated GGR and confidence interval
+   */
+  generateGGRPrediction(stats) {
+    if (
+      !stats ||
+      stats.average === null ||
+      stats.median === null ||
+      stats.stdDev === null
+    ) {
+      return {
+        predicted_ggr: null,
+        confidence_interval: { lower: null, upper: null },
+        confidence: 0,
+        reasoning: "Insufficient data for prediction",
+      };
+    }
+
+    const { average, median, stdDev } = stats;
+
+    // Use average as primary prediction
+    const predictedGGR = average;
+
+    // Calculate confidence interval (95% confidence)
+    const marginOfError = 1.96 * stdDev; // 95% confidence interval
+    const lowerBound = predictedGGR - marginOfError;
+    const upperBound = predictedGGR + marginOfError;
+
+    // Calculate confidence based on relative standard deviation
+    const relativeStdDev = stdDev / average;
+    const confidence = Math.max(0, Math.min(100, 100 - relativeStdDev * 150));
+
+    let reasoning =
+      "Prediction based on historical average with 95% confidence interval";
+    if (relativeStdDev > 0.5) {
+      reasoning += " (High variability - prediction less reliable)";
+    } else if (relativeStdDev > 0.3) {
+      reasoning += " (Moderate variability)";
+    } else {
+      reasoning += " (Low variability - prediction more reliable)";
+    }
+
+    return {
+      predicted_ggr: Math.round(predictedGGR * 100) / 100,
+      confidence_interval: {
+        lower: Math.round(lowerBound * 100) / 100,
+        upper: Math.round(upperBound * 100) / 100,
+      },
+      confidence: Math.round(confidence * 100) / 100,
+      reasoning,
+      relative_std_dev: Math.round(relativeStdDev * 1000) / 1000,
+    };
+  }
+
+  /**
+   * Generate NP amount prediction based on statistical analysis
+   * @param {Object} stats - Statistics object with average, median, stdDev
+   * @returns {Object} Prediction with estimated NP amount and confidence metrics
+   */
+  generateNPPrediction(stats) {
+    if (
+      !stats ||
+      stats.average === null ||
+      stats.median === null ||
+      stats.stdDev === null
+    ) {
+      return {
+        predicted_np_amount: null,
+        confidence_interval: { lower: null, upper: null },
+        confidence: 0,
+        reasoning: "Insufficient data for prediction",
+      };
+    }
+
+    const { average, median, stdDev } = stats;
+
+    // Use median as primary prediction (more robust for NP amounts)
+    const predictedNPAmount = median;
+
+    // Calculate confidence interval (90% confidence for NP amounts)
+    const marginOfError = 1.645 * stdDev; // 90% confidence interval
+    const lowerBound = predictedNPAmount - marginOfError;
+    const upperBound = predictedNPAmount + marginOfError;
+
+    // Calculate confidence based on data consistency
+    const coefficientOfVariation = stdDev / average;
+    const confidence = Math.max(
+      0,
+      Math.min(100, 100 - coefficientOfVariation * 120)
+    );
+
+    let reasoning =
+      "Prediction based on historical median with 90% confidence interval";
+    if (coefficientOfVariation > 0.6) {
+      reasoning += " (High variability - prediction less reliable)";
+    } else if (coefficientOfVariation > 0.4) {
+      reasoning += " (Moderate variability)";
+    } else {
+      reasoning += " (Low variability - prediction more reliable)";
+    }
+
+    return {
+      predicted_np_amount: Math.round(predictedNPAmount * 100) / 100,
+      confidence_interval: {
+        lower: Math.round(lowerBound * 100) / 100,
+        upper: Math.round(upperBound * 100) / 100,
+      },
+      confidence: Math.round(confidence * 100) / 100,
+      reasoning,
+      coefficient_of_variation:
+        Math.round(coefficientOfVariation * 1000) / 1000,
+    };
+  }
 }
 
 module.exports = new DataManipulator();

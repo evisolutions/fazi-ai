@@ -248,6 +248,18 @@ router.post(
             );
         });
 
+        // NEW: Generate predictions and recommendations
+        const promoAmountStats = calculated_data["Promo Amount"];
+        const ggrAmountStats = calculated_data["GGR Amount"];
+        const npAmountStats = calculated_data["NP Amount"];
+
+        calculated_data["Promotion Recommendation"] =
+          dataManipulator.generatePromotionRecommendation(promoAmountStats);
+        calculated_data["GGR Prediction"] =
+          dataManipulator.generateGGRPrediction(ggrAmountStats);
+        calculated_data["NP Prediction"] =
+          dataManipulator.generateNPPrediction(npAmountStats);
+
         calculated_data_by_group.push(calculated_data);
       });
 
