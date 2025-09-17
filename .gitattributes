@@ -1,0 +1,21 @@
+# Normalize line endings for text files
+* text=auto eol=lf
+
+# Treat common binary formats explicitly (no EOL normalization)
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.gif -text
+*.pdf -text
+*.zip -text
+*.gz -text
+*.7z -text
+*.exe -text
+*.dll -text
+*.bin -text
+
+# Excel and similar spreadsheet files should never be committed here
+# (backend already ignores them). Mark as binary to avoid diff/normalization if
+# they slip through locally before .gitignore takes effect.
+*.xlsx -text
+*.xls -text
