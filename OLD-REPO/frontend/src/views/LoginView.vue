@@ -465,8 +465,8 @@ const handleLogin = async () => {
 }
 
 .modern-input:focus {
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-color);
   background: var(--dark-surface);
 }
 
@@ -492,8 +492,8 @@ const handleLogin = async () => {
 }
 
 .password-toggle:hover {
-  color: var(--primary-400);
-  background: rgba(14, 165, 233, 0.1);
+  color: var(--theme-accent-primary);
+  background: var(--theme-shadow-color);
 }
 
 .input-error {
