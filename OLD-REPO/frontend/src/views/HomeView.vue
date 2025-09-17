@@ -5,13 +5,18 @@ import { useAuthStore } from '@/stores/auth'
 import { useGambaStore } from '@/stores/gamba'
 import { useTestStore } from '@/stores/test'
 import { useThemeStore } from '@/stores/theme'
+import { useChatStore } from '@/stores/chat'
+import { useRouter } from 'vue-router'
 import { Chart } from 'chart.js/auto'
+import { marked } from 'marked'
 
 const tab = ref(1)
 const gamba = useGambaStore()
 const auth = useAuthStore()
 const test = useTestStore()
 const theme = useThemeStore()
+const chatStore = useChatStore()
+const router = useRouter()
 const loading_data = ref(false)
 
 // Sorting state for tables
@@ -40,6 +45,11 @@ const tabs = [
     label: 'Predictions',
     icon: 'TrendingIcon',
   },
+  {
+    value: 5,
+    label: 'Chat',
+    icon: 'ChatIcon',
+  },
 ]
 
 // Icon mapping for MDI icons
@@ -48,6 +58,7 @@ const iconMap: Record<string, string> = {
   ChartIcon: 'mdi-chart-line',
   TrophyIcon: 'mdi-trophy',
   TrendingIcon: 'mdi-trending-up',
+  ChatIcon: 'mdi-robot',
 }
 
 const file_one = ref<File | null>(null)
@@ -70,6 +81,11 @@ const start_date = shallowRef<Date | null>(null)
 const end_date = shallowRef<Date | null>(null)
 
 const result_data = ref<any | null>(null)
+
+// Chat refs
+const messagesContainer = ref<HTMLElement>()
+const messageInput = ref<HTMLTextAreaElement>()
+const currentMessage = ref('')
 
 // Validation functions for numeric inputs
 const validateNonNegative = (value: number | null): number | null => {
@@ -195,6 +211,10 @@ const simulateCalculate = async () => {
     })
     console.log('response', response.data)
     result_data.value = response.data.data
+
+    // Store data in chat store for AI assistance
+    chatStore.setCalculateData(response.data.data)
+
     loading_data.value = false
     nextTick(() => {
       setupDataRender()
@@ -209,6 +229,100 @@ const simulateCalculate = async () => {
     }
   }
 }
+
+// Function to switch to chat tab with analysis data
+const goToChat = () => {
+  if (result_data.value) {
+    // Ensure chat store has the latest data
+    chatStore.setCalculateData(result_data.value)
+    // Switch to Chat tab (tab 5)
+    tab.value = 5
+  }
+}
+
+// Chat functions
+// Auto-scroll to bottom when new messages arrive
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
+
+// Watch for new messages and scroll
+watch(
+  () => chatStore.messages.length,
+  () => {
+    scrollToBottom()
+  },
+)
+
+// Watch for loading state changes
+watch(
+  () => chatStore.isLoading,
+  (isLoading) => {
+    if (!isLoading) {
+      scrollToBottom()
+    }
+  },
+)
+
+// Format message content with markdown
+const formatMessage = (content: string): string => {
+  try {
+    return marked.parse(content) as string
+  } catch (error) {
+    console.error('Error formatting message:', error)
+    return content
+  }
+}
+
+// Format timestamp
+const formatTime = (timestamp: Date): string => {
+  return timestamp.toLocaleTimeString('sr-RS', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// Handle Enter key press
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    sendMessage()
+  }
+}
+
+// Send message
+const sendMessage = async () => {
+  if (!currentMessage.value.trim() || chatStore.isLoading) return
+
+  const message = currentMessage.value.trim()
+  currentMessage.value = ''
+
+  const result = await chatStore.sendMessage(message)
+
+  if (!result.success && result.error) {
+    // Error is already handled in the store and displayed in the UI
+    console.error('Failed to send message:', result.error)
+  }
+}
+
+// Auto-resize textarea
+const autoResize = () => {
+  if (messageInput.value) {
+    messageInput.value.style.height = 'auto'
+    messageInput.value.style.height = messageInput.value.scrollHeight + 'px'
+  }
+}
+
+// Watch for changes in currentMessage to auto-resize
+watch(currentMessage, () => {
+  nextTick(() => {
+    autoResize()
+  })
+})
 
 function excelSerialToMonthYear(serial: number, use1904System = false) {
   // Excel's base date
@@ -1193,6 +1307,104 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </v-tabs-window-item>
+
+      <!-- Chat Tab -->
+      <v-tabs-window-item :value="5" class="tab-panel animate-fade-in">
+        <div class="chat-tab-container">
+          <!-- No Data Warning -->
+          <div v-if="!chatStore.hasCalculateData" class="no-data-warning">
+            <v-icon icon="mdi-alert-circle" size="64" class="warning-icon" />
+            <h3>Nema dostupnih podataka za analizu</h3>
+            <p>
+              Da biste mogli da postavljate pitanja AI asistentu, prvo morate da pokrenete analizu.
+            </p>
+            <v-btn color="primary" size="large" @click="tab = 1" class="go-to-analysis-btn">
+              <v-icon icon="mdi-chart-line" class="mr-2" />
+              Idi na analizu
+            </v-btn>
+          </div>
+
+          <!-- Chat Interface -->
+          <div v-else class="chat-interface">
+            <!-- Messages Container -->
+            <div ref="messagesContainer" class="messages-container">
+              <div v-if="chatStore.messageCount === 0" class="welcome-message">
+                <v-icon icon="mdi-robot" size="48" class="welcome-icon" />
+                <h3>Dobrodošli u AI asistent!</h3>
+                <p>Postavite pitanje o analiziranim podacima. Evo nekoliko primera:</p>
+                <ul class="example-questions">
+                  <li>"Kog operatera mi preporučuješ na srpskom tržištu?"</li>
+                  <li>"Koje su najbolje performanse u poslednjoj analizi?"</li>
+                  <li>"Objasni mi predikcije za GGR"</li>
+                  <li>"Koje igre imaju najbolji ROI?"</li>
+                </ul>
+              </div>
+
+              <!-- Messages -->
+              <div
+                v-for="message in chatStore.messages"
+                :key="message.id"
+                :class="['message', `message-${message.role}`]"
+              >
+                <div class="message-avatar">
+                  <v-icon
+                    :icon="message.role === 'assistant' ? 'mdi-robot' : 'mdi-account'"
+                    class="avatar-icon"
+                    :class="message.role === 'assistant' ? 'assistant-avatar' : 'user-avatar'"
+                  />
+                </div>
+                <div class="message-content">
+                  <div class="message-text" v-html="formatMessage(message.content)"></div>
+                  <div class="message-time">
+                    {{ formatTime(message.timestamp) }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Loading Indicator -->
+              <div v-if="chatStore.isLoading" class="message message-assistant">
+                <div class="message-avatar">
+                  <v-icon icon="mdi-robot" class="avatar-icon assistant-avatar" />
+                </div>
+                <div class="message-content">
+                  <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+              <div v-if="chatStore.error" class="error-message">
+                <v-icon icon="mdi-alert-circle" class="error-icon" />
+                {{ chatStore.error }}
+              </div>
+
+              <div class="input-container">
+                <textarea
+                  ref="messageInput"
+                  v-model="currentMessage"
+                  :disabled="chatStore.isLoading"
+                  placeholder="Postavite pitanje o analiziranim podacima..."
+                  class="message-input"
+                  @keydown="handleKeyDown"
+                  rows="1"
+                ></textarea>
+                <v-btn
+                  @click="sendMessage"
+                  :disabled="!currentMessage.trim() || chatStore.isLoading"
+                  icon="mdi-send"
+                  class="send-button"
+                  size="small"
+                />
               </div>
             </div>
           </div>
@@ -2907,6 +3119,260 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 .v-date-input :deep(.v-input__icon .mdi-calendar),
 .v-date-input :deep(.v-icon.mdi-calendar) {
   color: var(--primary-400) !important;
+}
+
+/* Chat Tab Styles */
+.chat-tab-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+
+.no-data-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem;
+  text-align: center;
+}
+
+.warning-icon {
+  color: var(--warning) !important;
+  margin-bottom: 1rem;
+}
+
+.no-data-warning h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.no-data-warning p {
+  margin: 0 0 2rem;
+  color: var(--text-secondary);
+  max-width: 500px;
+}
+
+.go-to-analysis-btn {
+  margin-top: 1rem !important;
+}
+
+.chat-interface {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 2rem;
+  scroll-behavior: smooth;
+}
+
+.welcome-message {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.welcome-icon {
+  color: var(--primary-400) !important;
+  margin-bottom: 1rem;
+}
+
+.welcome-message h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.welcome-message p {
+  margin: 0 0 1.5rem;
+}
+
+.example-questions {
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.example-questions li {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: var(--surface);
+  border-radius: 0.25rem;
+  font-style: italic;
+}
+
+.message {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+
+.message-user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assistant-avatar {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.user-avatar {
+  background: var(--secondary) !important;
+  color: white !important;
+}
+
+.avatar-icon {
+  font-size: 1.25rem;
+}
+
+.message-content {
+  flex: 1;
+  max-width: 70%;
+}
+
+.message-user .message-content {
+  text-align: right;
+}
+
+.message-text {
+  padding: 1rem;
+  border-radius: 1rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.message-assistant .message-text {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.message-user .message-text {
+  background: var(--primary-400);
+  color: white;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.typing-indicator span {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-0.5rem);
+    opacity: 1;
+  }
+}
+
+.input-area {
+  padding: 1rem 2rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--error-light);
+  color: var(--error);
+  border-radius: 0.5rem;
+  border: 1px solid var(--error);
+}
+
+.error-icon {
+  font-size: 1.25rem;
+}
+
+.input-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.input-container:focus-within {
+  border-color: var(--primary-400);
+}
+
+.message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  min-height: 1.5rem;
+  max-height: 8rem;
+  font-family: inherit;
+}
+
+.message-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.send-button {
+  flex-shrink: 0;
 }
 
 /* Responsive Design */

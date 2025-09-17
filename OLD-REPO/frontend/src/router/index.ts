@@ -11,13 +11,13 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/login',
       name: 'login',
       component: LoginView,
-    }
+    },
   ],
 })
 
@@ -25,7 +25,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-   next({ name: 'login' })
+    next({ name: 'login' })
   } else if (to.meta.requiresAuth && authStore.isAuthenticated) {
     try {
       await authStore.checkToken()
