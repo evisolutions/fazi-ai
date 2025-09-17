@@ -393,9 +393,9 @@ class DataManipulator {
 
   filterTrainingData(training_data, params) {
     let { trziste_ids, partner_ids, filtered_game_ids } = params;
-    let filter_games = null;
+    let filter_games = training_data; // Initialize with training_data instead of null
     if (filtered_game_ids && filtered_game_ids.length > 0)
-      filter_games = training_data.filter((row) =>
+      filter_games = filter_games.filter((row) =>
         filtered_game_ids.includes(Number(row[1]))
       );
     if (trziste_ids && trziste_ids.length > 0)
@@ -622,7 +622,7 @@ class DataManipulator {
    * @returns {Object} Best performing partners analysis
    */
   analyzeBestPartners(groupData, selectedTrzisteIds) {
-    // Filter data to only include selected trzista
+    // Filter data to only include selected markets
     const filteredData = groupData.filter(
       (row) => selectedTrzisteIds.includes(Number(row[3])) // trziste is at index 3
     );
@@ -630,7 +630,7 @@ class DataManipulator {
     if (filteredData.length === 0) {
       return {
         type: "partners",
-        message: "No data available for selected trzista",
+        message: "No data available for selected markets",
         recommendations: [],
       };
     }
@@ -645,7 +645,7 @@ class DataManipulator {
 
     return {
       type: "partners",
-      message: `Best performing partners for selected trzista`,
+      message: `Best performing partners for selected markets`,
       recommendations: sortedPartners.slice(0, 5), // Top 5
       total_analyzed: partnerPerformance.length,
     };
@@ -681,7 +681,7 @@ class DataManipulator {
 
     return {
       type: "trzista",
-      message: `Best performing trzista for selected partners`,
+      message: `Best performing markets for selected partners`,
       recommendations: sortedTrzista.slice(0, 5), // Top 5
       total_analyzed: trzistePerformance.length,
     };
@@ -718,7 +718,7 @@ class DataManipulator {
 
     return {
       type: "both",
-      message: "Top 5 performing trzista and partners",
+      message: "Top 5 performing markets and partners",
       recommendations: {
         trzista: topTrzista,
         partners: topPartners,

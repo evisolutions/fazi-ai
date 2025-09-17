@@ -1,89 +1,90 @@
 @import './base.css';
+@import './theme-variables.css';
 
-/* Modern Design System */
+/* Monochromatic Design System - Using Theme Variables */
 :root {
-  /* Primary Colors */
-  --primary-50: #f0f9ff;
-  --primary-100: #e0f2fe;
-  --primary-200: #bae6fd;
-  --primary-300: #7dd3fc;
-  --primary-400: #38bdf8;
-  --primary-500: #0ea5e9;
-  --primary-600: #0284c7;
-  --primary-700: #0369a1;
-  --primary-800: #075985;
-  --primary-900: #0c4a6e;
+  /* Primary Colors - Using theme variables */
+  --primary-50: var(--theme-gray-50);
+  --primary-100: var(--theme-gray-100);
+  --primary-200: var(--theme-gray-200);
+  --primary-300: var(--theme-gray-300);
+  --primary-400: var(--theme-gray-400);
+  --primary-500: var(--theme-gray-500);
+  --primary-600: var(--theme-gray-600);
+  --primary-700: var(--theme-gray-700);
+  --primary-800: var(--theme-gray-800);
+  --primary-900: var(--theme-gray-900);
 
-  /* Secondary Colors */
-  --secondary-50: #fdf4ff;
-  --secondary-100: #fae8ff;
-  --secondary-200: #f5d0fe;
-  --secondary-300: #f0abfc;
-  --secondary-400: #e879f9;
-  --secondary-500: #d946ef;
-  --secondary-600: #c026d3;
-  --secondary-700: #a21caf;
-  --secondary-800: #86198f;
-  --secondary-900: #701a75;
+  /* Secondary Colors - Slightly different gray variations */
+  --secondary-50: var(--theme-gray-50);
+  --secondary-100: var(--theme-gray-100);
+  --secondary-200: var(--theme-gray-200);
+  --secondary-300: var(--theme-gray-300);
+  --secondary-400: var(--theme-gray-400);
+  --secondary-500: var(--theme-gray-500);
+  --secondary-600: var(--theme-gray-600);
+  --secondary-700: var(--theme-gray-700);
+  --secondary-800: var(--theme-gray-800);
+  --secondary-900: var(--theme-gray-900);
 
-  /* Success Colors */
-  --success-50: #f0fdf4;
-  --success-100: #dcfce7;
-  --success-200: #bbf7d0;
-  --success-300: #86efac;
-  --success-400: #4ade80;
-  --success-500: #22c55e;
-  --success-600: #16a34a;
-  --success-700: #15803d;
-  --success-800: #166534;
-  --success-900: #14532d;
+  /* Success Colors - Using theme success color */
+  --success-50: var(--theme-gray-50);
+  --success-100: var(--theme-gray-100);
+  --success-200: var(--theme-gray-200);
+  --success-300: var(--theme-gray-300);
+  --success-400: var(--theme-gray-400);
+  --success-500: var(--theme-success);
+  --success-600: var(--theme-gray-600);
+  --success-700: var(--theme-gray-700);
+  --success-800: var(--theme-gray-800);
+  --success-900: var(--theme-gray-900);
 
-  /* Warning Colors */
-  --warning-50: #fffbeb;
-  --warning-100: #fef3c7;
-  --warning-200: #fde68a;
-  --warning-300: #fcd34d;
-  --warning-400: #fbbf24;
-  --warning-500: #f59e0b;
-  --warning-600: #d97706;
-  --warning-700: #b45309;
-  --warning-800: #92400e;
-  --warning-900: #78350f;
+  /* Warning Colors - Using theme warning color */
+  --warning-50: var(--theme-gray-50);
+  --warning-100: var(--theme-gray-100);
+  --warning-200: var(--theme-gray-200);
+  --warning-300: var(--theme-gray-300);
+  --warning-400: var(--theme-gray-400);
+  --warning-500: var(--theme-warning);
+  --warning-600: var(--theme-gray-600);
+  --warning-700: var(--theme-gray-700);
+  --warning-800: var(--theme-gray-800);
+  --warning-900: var(--theme-gray-900);
 
-  /* Error Colors */
-  --error-50: #fef2f2;
-  --error-100: #fee2e2;
-  --error-200: #fecaca;
-  --error-300: #fca5a5;
-  --error-400: #f87171;
-  --error-500: #ef4444;
-  --error-600: #dc2626;
-  --error-700: #b91c1c;
-  --error-800: #991b1b;
-  --error-900: #7f1d1d;
+  /* Error Colors - Using theme error color */
+  --error-50: var(--theme-gray-50);
+  --error-100: var(--theme-gray-100);
+  --error-200: var(--theme-gray-200);
+  --error-300: var(--theme-gray-300);
+  --error-400: var(--theme-gray-400);
+  --error-500: var(--theme-error);
+  --error-600: var(--theme-gray-600);
+  --error-700: var(--theme-gray-700);
+  --error-800: var(--theme-gray-800);
+  --error-900: var(--theme-gray-900);
 
-  /* Neutral Colors */
-  --neutral-50: #fafafa;
-  --neutral-100: #f5f5f5;
-  --neutral-200: #e5e5e5;
-  --neutral-300: #d4d4d4;
-  --neutral-400: #a3a3a3;
-  --neutral-500: #737373;
-  --neutral-600: #525252;
-  --neutral-700: #404040;
-  --neutral-800: #262626;
-  --neutral-900: #171717;
+  /* Neutral Colors - Using theme variables */
+  --neutral-50: var(--theme-gray-50);
+  --neutral-100: var(--theme-gray-100);
+  --neutral-200: var(--theme-gray-200);
+  --neutral-300: var(--theme-gray-300);
+  --neutral-400: var(--theme-gray-400);
+  --neutral-500: var(--theme-gray-500);
+  --neutral-600: var(--theme-gray-600);
+  --neutral-700: var(--theme-gray-700);
+  --neutral-800: var(--theme-gray-800);
+  --neutral-900: var(--theme-gray-900);
 
-  /* Dark Theme Colors */
-  --dark-bg-primary: #0f0f23;
-  --dark-bg-secondary: #1a1a2e;
-  --dark-bg-tertiary: #16213e;
-  --dark-surface: #1e1e3f;
-  --dark-surface-elevated: #252547;
-  --dark-border: #2d2d5a;
-  --dark-text-primary: #ffffff;
-  --dark-text-secondary: #a1a1aa;
-  --dark-text-tertiary: #71717a;
+  /* Dark Theme Colors - Using theme variables */
+  --dark-bg-primary: var(--theme-dark-bg-primary);
+  --dark-bg-secondary: var(--theme-dark-bg-secondary);
+  --dark-bg-tertiary: var(--theme-dark-bg-tertiary);
+  --dark-surface: var(--theme-dark-surface);
+  --dark-surface-elevated: var(--theme-dark-surface-elevated);
+  --dark-border: var(--theme-dark-border);
+  --dark-text-primary: var(--theme-dark-text-primary);
+  --dark-text-secondary: var(--theme-dark-text-secondary);
+  --dark-text-tertiary: var(--theme-dark-text-tertiary);
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -147,9 +148,9 @@ body {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+    radial-gradient(circle at 20% 80%, rgba(107, 114, 128, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(75, 85, 99, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(55, 65, 81, 0.05) 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
 }
@@ -180,7 +181,7 @@ body {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary-400), var(--secondary-400));
+  background: linear-gradient(135deg, var(--theme-gradient-start), var(--theme-gradient-end));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -197,7 +198,7 @@ body {
   position: absolute;
   inset: 0;
   padding: 2px;
-  background: linear-gradient(135deg, var(--primary-500), var(--secondary-500));
+  background: linear-gradient(135deg, var(--theme-gradient-start), var(--theme-gradient-end));
   border-radius: inherit;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
@@ -262,7 +263,7 @@ body {
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+  box-shadow: 0 0 20px var(--theme-shadow-color-hover);
 }
 
 /* Custom Button Styles */
@@ -316,7 +317,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--primary-500), var(--secondary-500));
+  background: linear-gradient(90deg, var(--theme-gradient-start), var(--theme-gradient-end));
 }
 
 .modern-card:hover {
@@ -337,8 +338,8 @@ body {
 
 .modern-input:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-color);
 }
 
 /* Loading Spinner */
@@ -386,33 +387,51 @@ a:hover {
   color: white;
 }
 
-/* Vuetify VAutocomplete Dark Theme Override */
-.v-autocomplete__content {
+/* Vuetify VAutocomplete, VSelect, VDateInput & VDatePicker Dark Theme Override */
+.v-autocomplete__content,
+.v-select__content,
+.v-date-input__content,
+.v-date-picker__content {
   background: var(--dark-surface) !important;
   border: 1px solid var(--dark-border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
-.v-autocomplete__content .v-list {
+.v-autocomplete__content .v-list,
+.v-select__content .v-list,
+.v-date-input__content .v-list,
+.v-date-picker__content .v-list {
   background: var(--dark-surface) !important;
 }
 
-.v-autocomplete__content .v-list-item {
+.v-autocomplete__content .v-list-item,
+.v-select__content .v-list-item,
+.v-date-input__content .v-list-item,
+.v-date-picker__content .v-list-item {
   background: var(--dark-surface) !important;
   color: var(--dark-text-primary) !important;
 }
 
-.v-autocomplete__content .v-list-item:hover {
+.v-autocomplete__content .v-list-item:hover,
+.v-select__content .v-list-item:hover,
+.v-date-input__content .v-list-item:hover,
+.v-date-picker__content .v-list-item:hover {
   background: var(--dark-surface-elevated) !important;
 }
 
-.v-autocomplete__content .v-list-item--active {
+.v-autocomplete__content .v-list-item--active,
+.v-select__content .v-list-item--active,
+.v-date-input__content .v-list-item--active,
+.v-date-picker__content .v-list-item--active {
   background: var(--primary-500) !important;
   color: white !important;
 }
 
-.v-autocomplete__content .v-list-item--selected {
+.v-autocomplete__content .v-list-item--selected,
+.v-select__content .v-list-item--selected,
+.v-date-input__content .v-list-item--selected,
+.v-date-picker__content .v-list-item--selected {
   background: var(--primary-500) !important;
   color: white !important;
 }
@@ -441,4 +460,214 @@ a:hover {
 .v-menu__content .v-list-item--active {
   background: var(--primary-500) !important;
   color: white !important;
+}
+
+/* Global Vuetify Text Highlight Override */
+.v-list-item mark,
+.v-list-item .v-highlight,
+.v-list-item [class*='highlight'],
+.v-autocomplete__content .v-list-item mark,
+.v-autocomplete__content .v-list-item .v-highlight,
+.v-autocomplete__content .v-list-item [class*='highlight'],
+.v-select__content .v-list-item mark,
+.v-select__content .v-list-item .v-highlight,
+.v-select__content .v-list-item [class*='highlight'],
+.v-date-input__content .v-list-item mark,
+.v-date-input__content .v-list-item .v-highlight,
+.v-date-input__content .v-list-item [class*='highlight'] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--primary-400) !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Override any inline styles for highlight */
+.v-list-item mark[style],
+.v-list-item span[style],
+.v-autocomplete__content .v-list-item mark[style],
+.v-autocomplete__content .v-list-item span[style],
+.v-select__content .v-list-item mark[style],
+.v-select__content .v-list-item span[style],
+.v-date-input__content .v-list-item mark[style],
+.v-date-input__content .v-list-item span[style],
+.v-date-picker__content .v-list-item span[style] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--primary-400) !important;
+}
+
+/* VDatePicker Calendar Specific Styles */
+.v-date-picker__content {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.v-date-picker__content .v-calendar {
+  background: var(--dark-surface) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.v-date-picker__content .v-calendar-header {
+  background: var(--dark-surface-elevated) !important;
+  color: var(--dark-text-primary) !important;
+  border-bottom: 1px solid var(--dark-border) !important;
+}
+
+.v-date-picker__content .v-calendar-weekday {
+  color: var(--dark-text-secondary) !important;
+  background: var(--dark-surface) !important;
+}
+
+.v-date-picker__content .v-calendar-day {
+  color: var(--dark-text-primary) !important;
+  background: var(--dark-surface) !important;
+}
+
+.v-date-picker__content .v-calendar-day:hover {
+  background: var(--dark-surface-elevated) !important;
+}
+
+.v-date-picker__content .v-calendar-day--selected {
+  background: var(--primary-500) !important;
+  color: white !important;
+}
+
+.v-date-picker__content .v-calendar-day--today {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.v-date-picker__content .v-btn {
+  color: var(--dark-text-primary) !important;
+}
+
+.v-date-picker__content .v-btn:hover {
+  background: var(--dark-surface-elevated) !important;
+}
+
+/* VDateInput Dark Theme Override */
+.v-date-input .v-field {
+  background: var(--dark-surface-elevated) !important;
+  border: 2px solid var(--dark-border) !important;
+  border-radius: var(--radius-lg) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.v-date-input .v-field:hover {
+  border-color: var(--primary-500) !important;
+  background: var(--dark-surface) !important;
+}
+
+.v-date-input .v-field--focused {
+  border-color: var(--theme-accent-primary) !important;
+  box-shadow: 0 0 0 3px var(--theme-shadow-color) !important;
+}
+
+.v-date-input .v-field__input {
+  color: var(--dark-text-primary) !important;
+  padding: var(--space-md) !important;
+}
+
+.v-date-input .v-field__outline {
+  display: none !important;
+}
+
+.v-date-input .v-field__input::placeholder {
+  color: var(--dark-text-secondary) !important;
+}
+
+/* VDateInput Calendar Specific Styles - Multiple Selectors */
+.v-date-input__content,
+.v-date-picker__content,
+.v-menu__content,
+.v-overlay__content {
+  background: var(--dark-surface) !important;
+  border: 1px solid var(--dark-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.v-calendar,
+.v-date-picker,
+.v-date-picker__content .v-calendar {
+  background: var(--dark-surface) !important;
+  color: var(--dark-text-primary) !important;
+}
+
+.v-calendar-header,
+.v-date-picker__content .v-calendar-header {
+  background: var(--dark-surface-elevated) !important;
+  color: var(--dark-text-primary) !important;
+  border-bottom: 1px solid var(--dark-border) !important;
+}
+
+.v-calendar-weekday,
+.v-date-picker__content .v-calendar-weekday {
+  color: var(--dark-text-secondary) !important;
+  background: var(--dark-surface) !important;
+}
+
+.v-calendar-day,
+.v-date-picker__content .v-calendar-day {
+  color: var(--dark-text-primary) !important;
+  background: var(--dark-surface) !important;
+}
+
+.v-calendar-day:hover,
+.v-date-picker__content .v-calendar-day:hover {
+  background: var(--dark-surface-elevated) !important;
+}
+
+.v-calendar-day--selected,
+.v-date-picker__content .v-calendar-day--selected {
+  background: var(--primary-500) !important;
+  color: white !important;
+}
+
+.v-calendar-day--today,
+.v-date-picker__content .v-calendar-day--today {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.v-calendar .v-btn,
+.v-date-picker__content .v-btn {
+  color: var(--dark-text-primary) !important;
+}
+
+.v-calendar .v-btn:hover,
+.v-date-picker__content .v-btn:hover {
+  background: var(--dark-surface-elevated) !important;
+}
+
+/* Additional Calendar Background Override - Maximum Specificity */
+.v-application .v-date-picker__content,
+.v-application .v-menu__content,
+.v-application .v-overlay__content,
+.v-application .v-calendar,
+.v-application .v-date-picker,
+.v-application .v-calendar-header,
+.v-application .v-calendar-weekday,
+.v-application .v-calendar-day {
+  background: var(--dark-surface) !important;
+  background-color: var(--dark-surface) !important;
+}
+
+.v-application .v-calendar-day:hover {
+  background: var(--dark-surface-elevated) !important;
+  background-color: var(--dark-surface-elevated) !important;
+}
+
+.v-application .v-calendar-day--selected {
+  background: var(--primary-500) !important;
+  background-color: var(--primary-500) !important;
+}
+
+.v-application .v-calendar-day--today {
+  background: var(--primary-400) !important;
+  background-color: var(--primary-400) !important;
 }
