@@ -1,0 +1,2 @@
+# Placeholder to keep the data directory in git.
+# Real XLSX files are ignored by .gitignore to avoid large files in the repo.
