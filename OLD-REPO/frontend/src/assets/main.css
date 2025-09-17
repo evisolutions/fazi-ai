@@ -75,16 +75,16 @@
   --neutral-800: var(--theme-gray-800);
   --neutral-900: var(--theme-gray-900);
 
-  /* Dark Theme Colors - Using theme variables */
-  --dark-bg-primary: var(--theme-dark-bg-primary);
-  --dark-bg-secondary: var(--theme-dark-bg-secondary);
-  --dark-bg-tertiary: var(--theme-dark-bg-tertiary);
-  --dark-surface: var(--theme-dark-surface);
-  --dark-surface-elevated: var(--theme-dark-surface-elevated);
-  --dark-border: var(--theme-dark-border);
-  --dark-text-primary: var(--theme-dark-text-primary);
-  --dark-text-secondary: var(--theme-dark-text-secondary);
-  --dark-text-tertiary: var(--theme-dark-text-tertiary);
+  /* Theme Colors - Using dynamic theme variables */
+  --dark-bg-primary: var(--bg-primary);
+  --dark-bg-secondary: var(--bg-secondary);
+  --dark-bg-tertiary: var(--bg-tertiary);
+  --dark-surface: var(--surface);
+  --dark-surface-elevated: var(--surface-elevated);
+  --dark-border: var(--border);
+  --dark-text-primary: var(--text-primary);
+  --dark-text-secondary: var(--text-secondary);
+  --dark-text-tertiary: var(--text-tertiary);
 
   /* Spacing */
   --space-xs: 0.25rem;
@@ -475,12 +475,12 @@ a:hover {
 .v-date-input__content .v-list-item mark,
 .v-date-input__content .v-list-item .v-highlight,
 .v-date-input__content .v-list-item [class*='highlight'] {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
   font-weight: 600 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
 }
 
 /* Override any inline styles for highlight */
@@ -493,9 +493,9 @@ a:hover {
 .v-date-input__content .v-list-item mark[style],
 .v-date-input__content .v-list-item span[style],
 .v-date-picker__content .v-list-item span[style] {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
 }
 
 /* VDatePicker Calendar Specific Styles */

@@ -4,12 +4,14 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useGambaStore } from '@/stores/gamba'
 import { useTestStore } from '@/stores/test'
+import { useThemeStore } from '@/stores/theme'
 import { Chart } from 'chart.js/auto'
 
 const tab = ref(1)
 const gamba = useGambaStore()
 const auth = useAuthStore()
 const test = useTestStore()
+const theme = useThemeStore()
 const loading_data = ref(false)
 
 // Sorting state for tables
@@ -543,12 +545,32 @@ onMounted(() => {
             <div class="logo-section">
               <div class="logo-icon">
                 <img
-                  src="@/assets/logo-white.svg"
+                  v-if="theme.isDark"
+                  src="@/assets/logo-dark.svg"
+                  alt="FAZI AI Analytics Logo"
+                  class="logo-image"
+                />
+                <img
+                  v-else
+                  src="@/assets/logo-light.svg"
                   alt="FAZI AI Analytics Logo"
                   class="logo-image"
                 />
               </div>
             </div>
+          </div>
+
+          <div class="header-right">
+            <button
+              @click="theme.toggleTheme()"
+              class="theme-toggle-button"
+              :title="theme.isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'"
+            >
+              <v-icon
+                :icon="theme.isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                class="theme-toggle-icon"
+              />
+            </button>
           </div>
         </div>
       </header>
@@ -1243,7 +1265,7 @@ onMounted(() => {
 /* Modern Header Styles */
 .home-container {
   min-height: 100vh;
-  background: var(--dark-bg-primary);
+  background: var(--bg-primary);
 }
 
 /* Sticky Header Container */
@@ -1253,11 +1275,11 @@ onMounted(() => {
   left: 0;
   right: 0;
   z-index: 100;
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .app-header {
-  background: var(--dark-surface);
+  background: var(--surface);
   padding: var(--space-lg);
   backdrop-filter: blur(20px);
 }
@@ -1268,10 +1290,15 @@ onMounted(() => {
   padding: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
   display: flex;
   align-items: center;
 }
@@ -1300,12 +1327,52 @@ onMounted(() => {
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-button {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle-button:hover {
+  background: var(--surface);
+  border-color: var(--primary-500);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-button:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-icon {
+  font-size: 20px;
+  transition: all var(--transition-normal);
+}
+
+.theme-toggle-button:hover .theme-toggle-icon {
+  color: var(--primary-400);
+  transform: scale(1.1);
 }
 
 /* Tab Navigation Container */
 .tab-navigation-container {
-  background: var(--dark-surface-elevated) !important;
-  border-bottom: 1px solid var(--dark-border) !important;
+  background: var(--surface-elevated) !important;
+  border-bottom: 1px solid var(--border) !important;
   width: 100% !important;
 }
 
@@ -1339,7 +1406,7 @@ onMounted(() => {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  color: var(--dark-text-secondary) !important;
+  color: var(--text-secondary) !important;
   font-weight: 500 !important;
   font-size: 14px !important;
   cursor: pointer !important;
@@ -1353,7 +1420,7 @@ onMounted(() => {
 
 .custom-tabs :deep(.v-tab:hover) {
   background: transparent !important;
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .custom-tabs :deep(.v-tab--selected) {
@@ -1392,7 +1459,7 @@ onMounted(() => {
 
 /* Content Area */
 .tab-content {
-  background: var(--dark-bg-primary);
+  background: var(--bg-primary);
   min-height: calc(100vh - 160px);
   padding-top: 200px; /* Space for fixed header + tabs */
 }
@@ -1419,6 +1486,15 @@ onMounted(() => {
 
   .app-title {
     font-size: 1.2rem;
+  }
+
+  .theme-toggle-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .theme-toggle-icon {
+    font-size: 18px;
   }
 
   .tab-navigation-container {
@@ -1473,6 +1549,15 @@ onMounted(() => {
   .app-title {
     font-size: 1rem;
   }
+
+  .theme-toggle-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .theme-toggle-icon {
+    font-size: 16px;
+  }
 }
 
 /* Tab Content Styles */
@@ -1496,8 +1581,8 @@ onMounted(() => {
 
 /* Section Card Styles */
 .section-card {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   transition: all var(--transition-normal);
@@ -1546,12 +1631,12 @@ onMounted(() => {
 .section-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
 .section-description {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.9rem;
 }
@@ -1564,8 +1649,8 @@ onMounted(() => {
 }
 
 .file-upload-card {
-  background: var(--dark-surface-elevated);
-  border: 2px dashed var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px dashed var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   transition: all var(--transition-normal);
@@ -1606,12 +1691,12 @@ onMounted(() => {
 .upload-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-sm) 0;
 }
 
 .upload-description {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin: 0 0 var(--space-lg) 0;
 }
@@ -1641,13 +1726,13 @@ onMounted(() => {
 .file-info {
   margin-top: var(--space-md);
   padding: var(--space-md);
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-md);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .file-name {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: var(--space-xs);
@@ -1655,7 +1740,7 @@ onMounted(() => {
 }
 
 .file-size {
-  color: var(--dark-text-tertiary);
+  color: var(--text-tertiary);
   font-size: 0.8rem;
 }
 
@@ -1666,7 +1751,7 @@ onMounted(() => {
 
 .form-label {
   display: block;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   margin-bottom: var(--space-sm);
   font-size: 0.9rem;
@@ -1674,11 +1759,11 @@ onMounted(() => {
 
 .modern-select {
   width: 100%;
-  background: var(--dark-surface-elevated);
-  border: 2px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 1rem;
   transition: all var(--transition-normal);
   outline: none;
@@ -1687,12 +1772,12 @@ onMounted(() => {
 .modern-select:focus {
   border-color: var(--theme-accent-primary);
   box-shadow: 0 0 0 3px var(--theme-shadow-color);
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .modern-select option {
-  background: var(--dark-surface);
-  color: var(--dark-text-primary);
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
 /* Action Button Styles */
@@ -1767,7 +1852,7 @@ onMounted(() => {
 /* Loading States */
 
 .loading-content {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   padding: var(--space-2xl);
   text-align: center;
@@ -1779,7 +1864,7 @@ onMounted(() => {
 }
 
 .loading-text {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -1849,8 +1934,8 @@ onMounted(() => {
 }
 
 .result-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   margin-bottom: 40px;
@@ -1864,21 +1949,21 @@ onMounted(() => {
 .group-title {
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-sm) 0;
 }
 
 .group-subtitle {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.9rem;
 }
 
 .chart-container {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .analysis-results {
@@ -1886,8 +1971,8 @@ onMounted(() => {
 }
 
 .analysis-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   margin-bottom: 40px;
@@ -1900,7 +1985,7 @@ onMounted(() => {
 .recommendations-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-lg) 0;
 }
 
@@ -1911,33 +1996,33 @@ onMounted(() => {
 .table-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-md) 0;
 }
 
 .modern-table {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .table-header {
   display: grid;
   grid-template-columns: 80px 1fr 120px 120px 120px;
-  background: var(--dark-surface-elevated);
-  border-bottom: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
 }
 
 .table-row {
   display: grid;
   grid-template-columns: 80px 1fr 120px 120px 120px;
-  border-bottom: 1px solid var(--dark-border);
+  border-bottom: 1px solid var(--border);
   transition: background-color var(--transition-fast);
 }
 
 .table-row:hover {
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
 }
 
 .table-row:last-child {
@@ -1946,7 +2031,7 @@ onMounted(() => {
 
 .table-cell {
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   display: flex;
   align-items: center;
@@ -1984,8 +2069,8 @@ onMounted(() => {
 }
 
 .prediction-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   margin-bottom: 40px;
@@ -1999,8 +2084,8 @@ onMounted(() => {
 }
 
 .prediction-card {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   transition: all var(--transition-normal);
@@ -2049,7 +2134,7 @@ onMounted(() => {
 .card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -2065,7 +2150,7 @@ onMounted(() => {
 }
 
 .metric-label {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: var(--space-md);
 }
@@ -2110,7 +2195,7 @@ onMounted(() => {
 
   .table-cell {
     padding: var(--space-xs);
-    border-bottom: 1px solid var(--dark-border);
+    border-bottom: 1px solid var(--border);
   }
 
   .table-cell:last-child {
@@ -2144,7 +2229,7 @@ onMounted(() => {
 }
 
 .filter-label {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: var(--space-sm);
@@ -2157,9 +2242,9 @@ onMounted(() => {
   max-height: 200px;
   overflow-y: auto;
   padding: var(--space-sm);
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .checkbox-item {
@@ -2189,11 +2274,11 @@ onMounted(() => {
 .checkmark {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--dark-border);
+  border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   position: relative;
   transition: all var(--transition-fast);
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .checkbox-input:checked + .checkmark {
@@ -2214,7 +2299,7 @@ onMounted(() => {
 }
 
 .checkbox-label {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -2227,11 +2312,11 @@ onMounted(() => {
 
 .range-input {
   flex: 1;
-  background: var(--dark-surface-elevated);
-  border: 2px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 1rem;
   transition: all var(--transition-normal);
   outline: none;
@@ -2240,11 +2325,11 @@ onMounted(() => {
 .range-input:focus {
   border-color: var(--theme-accent-primary);
   box-shadow: 0 0 0 3px var(--theme-shadow-color);
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .range-separator {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -2253,7 +2338,7 @@ onMounted(() => {
 .roi-np-table-container {
   overflow-x: auto;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .table-wrapper {
@@ -2263,28 +2348,28 @@ onMounted(() => {
 .roi-np-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .roi-np-table th {
-  background: var(--dark-surface-elevated);
-  color: var(--dark-text-primary);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
   font-weight: 600;
   padding: var(--space-md);
   text-align: left;
-  border-bottom: 1px solid var(--dark-border);
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
 
 .roi-np-table td {
   padding: var(--space-md);
-  color: var(--dark-text-primary);
-  border-bottom: 1px solid var(--dark-border);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
 
 .roi-np-table tr:hover {
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
 }
 
 .roi-np-table tr:last-child td {
@@ -2342,15 +2427,15 @@ onMounted(() => {
 }
 
 .vuetify-autocomplete :deep(.v-field) {
-  background: var(--dark-surface-elevated) !important;
-  border: 2px solid var(--dark-border) !important;
+  background: var(--surface-elevated) !important;
+  border: 2px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field:hover) {
   border-color: var(--primary-500) !important;
-  background: var(--dark-surface) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field--focused) {
@@ -2359,7 +2444,7 @@ onMounted(() => {
 }
 
 .vuetify-autocomplete :deep(.v-field__input) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
   padding: var(--space-md) !important;
 }
 
@@ -2378,18 +2463,18 @@ onMounted(() => {
 }
 
 .vuetify-autocomplete :deep(.v-list) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-list-item) {
-  color: var(--dark-text-primary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 /* Force all list items to have same appearance - override everything */
@@ -2401,30 +2486,30 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-list-item[data-selected='true']),
 .vuetify-autocomplete :deep(.v-list-item[style*='background']),
 .vuetify-autocomplete :deep(.v-list-item[style*='color']) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
-  background-color: var(--dark-surface) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
 }
 
 /* Override any inline styles */
 .vuetify-autocomplete :deep(.v-list-item[style]) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
-  background-color: var(--dark-surface) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
 }
 
 /* Custom no-highlight class for selected items */
 .no-highlight {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
-  background-color: var(--dark-surface) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
 }
 
 /* Override Vuetify's default selected styling */
 :deep(.no-highlight) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
-  background-color: var(--dark-surface) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
 }
 
 /* Remove text highlight in search results - more specific selectors */
@@ -2433,20 +2518,20 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-list-item [class*='highlight']),
 .vuetify-autocomplete :deep(.v-list-item span[style*='background']),
 .vuetify-autocomplete :deep(.v-list-item span[style*='color']) {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
   font-weight: 600 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
 }
 
 /* Override any inline styles for highlight */
 .vuetify-autocomplete :deep(.v-list-item mark[style]),
 .vuetify-autocomplete :deep(.v-list-item span[style]) {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
 }
 
 /* Global text highlight removal with maximum specificity */
@@ -2455,18 +2540,18 @@ onMounted(() => {
 :deep(.v-list-item [class*='highlight']),
 :deep(.v-list-item span[style*='background']),
 :deep(.v-list-item span[style*='color']) {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
   font-weight: 600 !important;
 }
 
 /* Force override with maximum specificity */
 .vuetify-autocomplete :deep(.v-list-item) mark,
 .vuetify-autocomplete :deep(.v-list-item) span {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
 }
 
 /* Try to override with pseudo-elements */
@@ -2479,43 +2564,108 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-list-item *),
 .vuetify-autocomplete :deep(.v-list-item *::before),
 .vuetify-autocomplete :deep(.v-list-item *::after) {
-  background: transparent !important;
-  background-color: transparent !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
 }
 
 /* Specific override for any highlighted text */
 .vuetify-autocomplete :deep(.v-list-item) *[style*='background'] {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--primary-400) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
 }
 
-/* Use Vuetify CSS variables for highlight styling */
+/* Use custom CSS variables for highlight styling */
 :root {
-  --v-highlight-text: #0ea5e9;
-  --v-highlight-bg: transparent;
+  --v-highlight-text: var(--highlight-text);
+  --v-highlight-bg: var(--highlight-bg);
+}
+
+/* Force override Vuetify's inline styles with maximum specificity */
+.v-application .v-list-item mark,
+.v-application .v-list-item .v-highlight,
+.v-application .v-list-item [class*='highlight'],
+.v-application .v-autocomplete__content .v-list-item mark,
+.v-application .v-autocomplete__content .v-list-item .v-highlight,
+.v-application .v-autocomplete__content .v-list-item [class*='highlight'],
+.v-application .v-select__content .v-list-item mark,
+.v-application .v-select__content .v-list-item .v-highlight,
+.v-application .v-select__content .v-list-item [class*='highlight'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Additional override for Vuetify's inline styles */
+.v-application .v-list-item mark[style],
+.v-application .v-list-item .v-highlight[style],
+.v-application .v-list-item [class*='highlight'][style],
+.v-application .v-autocomplete__content .v-list-item mark[style],
+.v-application .v-autocomplete__content .v-list-item .v-highlight[style],
+.v-application .v-autocomplete__content .v-list-item [class*='highlight'][style] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+}
+
+/* Maximum specificity override for any highlight element */
+html .v-application .v-list-item mark,
+html .v-application .v-list-item .v-highlight,
+html .v-application .v-list-item [class*='highlight'],
+html .v-application .v-autocomplete__content .v-list-item mark,
+html .v-application .v-autocomplete__content .v-list-item .v-highlight,
+html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Target all possible Vuetify highlight selectors */
+.v-list-item .v-highlight,
+.v-list-item .v-highlight--text,
+.v-list-item .v-highlight--background,
+.v-autocomplete__content .v-list-item .v-highlight,
+.v-autocomplete__content .v-list-item .v-highlight--text,
+.v-autocomplete__content .v-list-item .v-highlight--background,
+.v-select__content .v-list-item .v-highlight,
+.v-select__content .v-list-item .v-highlight--text,
+.v-select__content .v-list-item .v-highlight--background {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
 }
 
 /* Override Vuetify's default highlight styles using CSS variables */
 .v-list-item mark,
 .v-list-item .v-highlight,
 .v-list-item [class*='highlight'] {
-  background: var(--v-highlight-bg) !important;
-  background-color: var(--v-highlight-bg) !important;
-  color: var(--v-highlight-text) !important;
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
   font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
 }
 
 .vuetify-autocomplete :deep(.v-overlay__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-menu__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
@@ -2523,24 +2673,24 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-select__content),
 .vuetify-autocomplete :deep(.v-date-input__content),
 .vuetify-autocomplete :deep(.v-date-picker__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field__input) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field__input::placeholder) {
-  color: var(--dark-text-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* Additional VAutocomplete dropdown styling */
 .vuetify-autocomplete :deep(.v-autocomplete__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
@@ -2549,30 +2699,30 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-select__content .v-list),
 .vuetify-autocomplete :deep(.v-date-input__content .v-list),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-list) {
-  background: var(--dark-surface) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item),
 .vuetify-autocomplete :deep(.v-select__content .v-list-item),
 .vuetify-autocomplete :deep(.v-date-input__content .v-list-item),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-list-item) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item:hover),
 .vuetify-autocomplete :deep(.v-select__content .v-list-item:hover),
 .vuetify-autocomplete :deep(.v-date-input__content .v-list-item:hover),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 .vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item--active),
 .vuetify-autocomplete :deep(.v-select__content .v-list-item--active),
 .vuetify-autocomplete :deep(.v-date-input__content .v-list-item--active),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-list-item--active) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Global VAutocomplete, VSelect, VDateInput & VDatePicker styling */
@@ -2580,8 +2730,8 @@ onMounted(() => {
 :deep(.v-select__content),
 :deep(.v-date-input__content),
 :deep(.v-date-picker__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
@@ -2590,30 +2740,30 @@ onMounted(() => {
 :deep(.v-select__content .v-list),
 :deep(.v-date-input__content .v-list),
 :deep(.v-date-picker__content .v-list) {
-  background: var(--dark-surface) !important;
+  background: var(--surface) !important;
 }
 
 :deep(.v-autocomplete__content .v-list-item),
 :deep(.v-select__content .v-list-item),
 :deep(.v-date-input__content .v-list-item),
 :deep(.v-date-picker__content .v-list-item) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.v-autocomplete__content .v-list-item:hover),
 :deep(.v-select__content .v-list-item:hover),
 :deep(.v-date-input__content .v-list-item:hover),
 :deep(.v-date-picker__content .v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 :deep(.v-autocomplete__content .v-list-item--active),
 :deep(.v-select__content .v-list-item--active),
 :deep(.v-date-input__content .v-list-item--active),
 :deep(.v-date-picker__content .v-list-item--active) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Completely remove all highlight styles */
@@ -2625,43 +2775,43 @@ onMounted(() => {
 :deep(.v-list-item[data-selected='true']),
 :deep(.v-list-item[aria-selected='true']),
 :deep(.v-list-item[data-selected='true']) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Remove any focus or selection styles */
 :deep(.v-list-item:focus),
 :deep(.v-list-item:focus-visible),
 :deep(.v-list-item[tabindex='0']:focus) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
   outline: none !important;
 }
 
 /* VDatePicker Calendar Specific Styles */
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-header) {
-  background: var(--dark-surface-elevated) !important;
-  color: var(--dark-text-primary) !important;
-  border-bottom: 1px solid var(--dark-border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-weekday) {
-  color: var(--dark-text-secondary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-secondary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day) {
-  color: var(--dark-text-primary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day--selected) {
@@ -2675,11 +2825,11 @@ onMounted(() => {
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-btn) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-date-picker__content .v-btn:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 /* VDateInput Calendar Specific Styles - High Specificity */
@@ -2687,8 +2837,8 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-date-picker__content),
 .vuetify-autocomplete :deep(.v-menu__content),
 .vuetify-autocomplete :deep(.v-overlay__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
@@ -2696,32 +2846,32 @@ onMounted(() => {
 .vuetify-autocomplete :deep(.v-calendar),
 .vuetify-autocomplete :deep(.v-date-picker),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar-header),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-header) {
-  background: var(--dark-surface-elevated) !important;
-  color: var(--dark-text-primary) !important;
-  border-bottom: 1px solid var(--dark-border) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar-weekday),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-weekday) {
-  color: var(--dark-text-secondary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-secondary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar-day),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day) {
-  color: var(--dark-text-primary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar-day:hover),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar-day--selected),
@@ -2738,12 +2888,12 @@ onMounted(() => {
 
 .vuetify-autocomplete :deep(.v-calendar .v-btn),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-btn) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-calendar .v-btn:hover),
 .vuetify-autocomplete :deep(.v-date-picker__content .v-btn:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
 /* Date Input Calendar Icon Styling */

@@ -96,6 +96,24 @@
   --theme-dark-text-primary: #ffffff;    /* Glavni tekst */
   --theme-dark-text-secondary: #a1a1aa;  /* Sekundarni tekst */
   --theme-dark-text-tertiary: #71717a;   /* Tercijarni tekst */
+  --theme-dark-highlight-bg: #404040;    /* Highlight background za matchovani tekst */
+  --theme-dark-highlight-text: #ffffff;  /* Highlight text color */
+
+  /* 
+   * LIGHT MODE SPECIFICNE BOJE
+   * Ove se koriste za svetlu temu
+   */
+  --theme-light-bg-primary: #ffffff;     /* Glavna pozadina */
+  --theme-light-bg-secondary: #f8f9fa;   /* Sekundarna pozadina */
+  --theme-light-bg-tertiary: #f1f3f4;    /* Tercijarna pozadina */
+  --theme-light-surface: #ffffff;        /* Površine elemenata */
+  --theme-light-surface-elevated: #f8f9fa; /* Uzdignute površine */
+  --theme-light-border: #e5e7eb;         /* Granice */
+  --theme-light-text-primary: #1f2937;   /* Glavni tekst */
+  --theme-light-text-secondary: #6b7280; /* Sekundarni tekst */
+  --theme-light-text-tertiary: #9ca3af;  /* Tercijarni tekst */
+  --theme-light-highlight-bg: #e5e7eb;   /* Highlight background za matchovani tekst */
+  --theme-light-highlight-text: #1f2937; /* Highlight text color */
 
   /* 
    * ACCENT BOJE - Za hover efekte, linkove, itd.
@@ -147,3 +165,53 @@
  *   box-shadow: 0 4px 8px var(--theme-shadow-color);
  * }
  */
+
+/* 
+ * THEME-SPECIFIC VARIABLES
+ * These variables change based on the current theme
+ */
+
+/* Default theme variables (dark theme) */
+:root {
+  --bg-primary: var(--theme-dark-bg-primary);
+  --bg-secondary: var(--theme-dark-bg-secondary);
+  --bg-tertiary: var(--theme-dark-bg-tertiary);
+  --surface: var(--theme-dark-surface);
+  --surface-elevated: var(--theme-dark-surface-elevated);
+  --border: var(--theme-dark-border);
+  --text-primary: var(--theme-dark-text-primary);
+  --text-secondary: var(--theme-dark-text-secondary);
+  --text-tertiary: var(--theme-dark-text-tertiary);
+  --highlight-bg: var(--theme-dark-highlight-bg);
+  --highlight-text: var(--theme-dark-highlight-text);
+}
+
+/* Light theme variables */
+.light-theme {
+  --bg-primary: var(--theme-light-bg-primary);
+  --bg-secondary: var(--theme-light-bg-secondary);
+  --bg-tertiary: var(--theme-light-bg-tertiary);
+  --surface: var(--theme-light-surface);
+  --surface-elevated: var(--theme-light-surface-elevated);
+  --border: var(--theme-light-border);
+  --text-primary: var(--theme-light-text-primary);
+  --text-secondary: var(--theme-light-text-secondary);
+  --text-tertiary: var(--theme-light-text-tertiary);
+  --highlight-bg: var(--theme-light-highlight-bg);
+  --highlight-text: var(--theme-light-highlight-text);
+}
+
+/* Dark theme variables (explicit) */
+.dark-theme {
+  --bg-primary: var(--theme-dark-bg-primary);
+  --bg-secondary: var(--theme-dark-bg-secondary);
+  --bg-tertiary: var(--theme-dark-bg-tertiary);
+  --surface: var(--theme-dark-surface);
+  --surface-elevated: var(--theme-dark-surface-elevated);
+  --border: var(--theme-dark-border);
+  --text-primary: var(--theme-dark-text-primary);
+  --text-secondary: var(--theme-dark-text-secondary);
+  --text-tertiary: var(--theme-dark-text-tertiary);
+  --highlight-bg: var(--theme-dark-highlight-bg);
+  --highlight-text: var(--theme-dark-highlight-text);
+}
