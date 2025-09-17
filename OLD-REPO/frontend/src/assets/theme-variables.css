@@ -1,0 +1,217 @@
+/* 
+ * THEME VARIABLES - EASY TO MODIFY
+ * 
+ * Ovo je glavni fajl za menjanje tema. 
+ * Samo menjajte vrednosti ovde da biste promenili izgled cele aplikacije.
+ * 
+ * Svi ovi fajlovi koriste ove varijable:
+ * - main.css (glavni stilovi)
+ * - base.css (osnovni stilovi)
+ * - Vue komponente
+ */
+
+:root {
+  /* 
+   * GLAVNE BOJE - Menjajte ove vrednosti da biste promenili temu
+   * 
+   * Trenutno koristimo monohromatske sive boje.
+   * Možete menjati ove vrednosti da biste dobili različite nijanse sive.
+   */
+  
+  /* Osnovna siva paleta - od najsvetlije do najtamnije */
+  --theme-gray-50: #f9fafb;    /* Najsvetlija siva */
+  --theme-gray-100: #f3f4f6;   /* Vrlo svetla siva */
+  --theme-gray-200: #e5e7eb;   /* Svetla siva */
+  --theme-gray-300: #d1d5db;   /* Srednje svetla siva */
+  --theme-gray-400: #9ca3af;   /* Srednja siva */
+  --theme-gray-500: #6b7280;   /* Osnovna siva */
+  --theme-gray-600: #4b5563;   /* Srednje tamna siva */
+  --theme-gray-700: #374151;   /* Tamna siva */
+  --theme-gray-800: #1f2937;   /* Vrlo tamna siva */
+  --theme-gray-900: #111827;   /* Najtamnija siva */
+
+  /* 
+   * ALTERNATIVNE TEME - Otkomentarišite jednu od ovih tema da biste je koristili
+   * Umesto gornjih vrednosti, koristite ove:
+   */
+
+  /* 
+   * TOPLA SIVA TEMA (sa blagim smeđim tonovima)
+   */
+  /*
+  --theme-gray-50: #fafaf9;
+  --theme-gray-100: #f5f5f4;
+  --theme-gray-200: #e7e5e4;
+  --theme-gray-300: #d6d3d1;
+  --theme-gray-400: #a8a29e;
+  --theme-gray-500: #78716c;
+  --theme-gray-600: #57534e;
+  --theme-gray-700: #44403c;
+  --theme-gray-800: #292524;
+  --theme-gray-900: #1c1917;
+  */
+
+  /* 
+   * HLADNA SIVA TEMA (sa blagim plavim tonovima)
+   */
+  /*
+  --theme-gray-50: #f8fafc;
+  --theme-gray-100: #f1f5f9;
+  --theme-gray-200: #e2e8f0;
+  --theme-gray-300: #cbd5e1;
+  --theme-gray-400: #94a3b8;
+  --theme-gray-500: #64748b;
+  --theme-gray-600: #475569;
+  --theme-gray-700: #334155;
+  --theme-gray-800: #1e293b;
+  --theme-gray-900: #0f172a;
+  */
+
+  /* 
+   * PURE BLACK & WHITE TEMA (čisti crno-beli)
+   */
+  /*
+  --theme-gray-50: #ffffff;
+  --theme-gray-100: #f8f8f8;
+  --theme-gray-200: #e8e8e8;
+  --theme-gray-300: #d0d0d0;
+  --theme-gray-400: #a0a0a0;
+  --theme-gray-500: #707070;
+  --theme-gray-600: #505050;
+  --theme-gray-700: #303030;
+  --theme-gray-800: #202020;
+  --theme-gray-900: #000000;
+  */
+
+  /* 
+   * DARK MODE SPECIFICNE BOJE
+   * Ove se koriste za tamnu temu
+   */
+  --theme-dark-bg-primary: #0a0a0a;      /* Glavna pozadina */
+  --theme-dark-bg-secondary: #1a1a1a;    /* Sekundarna pozadina */
+  --theme-dark-bg-tertiary: #262626;     /* Tercijarna pozadina */
+  --theme-dark-surface: #1f1f1f;         /* Površine elemenata */
+  --theme-dark-surface-elevated: #2a2a2a; /* Uzdignute površine */
+  --theme-dark-border: #404040;          /* Granice */
+  --theme-dark-text-primary: #ffffff;    /* Glavni tekst */
+  --theme-dark-text-secondary: #a1a1aa;  /* Sekundarni tekst */
+  --theme-dark-text-tertiary: #71717a;   /* Tercijarni tekst */
+  --theme-dark-highlight-bg: #404040;    /* Highlight background za matchovani tekst */
+  --theme-dark-highlight-text: #ffffff;  /* Highlight text color */
+
+  /* 
+   * LIGHT MODE SPECIFICNE BOJE
+   * Ove se koriste za svetlu temu
+   */
+  --theme-light-bg-primary: #ffffff;     /* Glavna pozadina */
+  --theme-light-bg-secondary: #f8f9fa;   /* Sekundarna pozadina */
+  --theme-light-bg-tertiary: #f1f3f4;    /* Tercijarna pozadina */
+  --theme-light-surface: #ffffff;        /* Površine elemenata */
+  --theme-light-surface-elevated: #f8f9fa; /* Uzdignute površine */
+  --theme-light-border: #e5e7eb;         /* Granice */
+  --theme-light-text-primary: #1f2937;   /* Glavni tekst */
+  --theme-light-text-secondary: #6b7280; /* Sekundarni tekst */
+  --theme-light-text-tertiary: #9ca3af;  /* Tercijarni tekst */
+  --theme-light-highlight-bg: #e5e7eb;   /* Highlight background za matchovani tekst */
+  --theme-light-highlight-text: #1f2937; /* Highlight text color */
+
+  /* 
+   * ACCENT BOJE - Za hover efekte, linkove, itd.
+   * Možete menjati ove da biste imali različite akcentne boje
+   */
+  --theme-accent-primary: var(--theme-gray-500);    /* Glavna akcentna boja */
+  --theme-accent-secondary: var(--theme-gray-400);  /* Sekundarna akcentna boja */
+  --theme-accent-hover: var(--theme-gray-600);      /* Hover efekat */
+
+  /* 
+   * STATUS BOJE - Za success, warning, error
+   * Možete menjati ove da biste imali različite status boje
+   */
+  --theme-success: var(--theme-gray-600);   /* Success - tamnija siva */
+  --theme-warning: var(--theme-gray-500);   /* Warning - srednja siva */
+  --theme-error: var(--theme-gray-700);     /* Error - tamna siva */
+
+  /* 
+   * GRADIENT BOJE - Za gradient efekte
+   */
+  --theme-gradient-start: var(--theme-gray-400);
+  --theme-gradient-end: var(--theme-gray-600);
+
+  /* 
+   * SHADOW BOJE - Za senke
+   */
+  --theme-shadow-color: rgba(0, 0, 0, 0.1);
+  --theme-shadow-color-hover: rgba(0, 0, 0, 0.15);
+}
+
+/* 
+ * KAKO KORISTITI OVE VARIJABLE:
+ * 
+ * 1. Za menjanje osnovne teme, menjajte --theme-gray-* varijable
+ * 2. Za menjanje dark mode boja, menjajte --theme-dark-* varijable  
+ * 3. Za menjanje akcentnih boja, menjajte --theme-accent-* varijable
+ * 4. Za menjanje status boja, menjajte --theme-status-* varijable
+ * 
+ * PRIMER KORIŠĆENJA:
+ * 
+ * .my-button {
+ *   background: var(--theme-accent-primary);
+ *   color: var(--theme-dark-text-primary);
+ *   border: 1px solid var(--theme-dark-border);
+ * }
+ * 
+ * .my-button:hover {
+ *   background: var(--theme-accent-hover);
+ *   box-shadow: 0 4px 8px var(--theme-shadow-color);
+ * }
+ */
+
+/* 
+ * THEME-SPECIFIC VARIABLES
+ * These variables change based on the current theme
+ */
+
+/* Default theme variables (dark theme) */
+:root {
+  --bg-primary: var(--theme-dark-bg-primary);
+  --bg-secondary: var(--theme-dark-bg-secondary);
+  --bg-tertiary: var(--theme-dark-bg-tertiary);
+  --surface: var(--theme-dark-surface);
+  --surface-elevated: var(--theme-dark-surface-elevated);
+  --border: var(--theme-dark-border);
+  --text-primary: var(--theme-dark-text-primary);
+  --text-secondary: var(--theme-dark-text-secondary);
+  --text-tertiary: var(--theme-dark-text-tertiary);
+  --highlight-bg: var(--theme-dark-highlight-bg);
+  --highlight-text: var(--theme-dark-highlight-text);
+}
+
+/* Light theme variables */
+.light-theme {
+  --bg-primary: var(--theme-light-bg-primary);
+  --bg-secondary: var(--theme-light-bg-secondary);
+  --bg-tertiary: var(--theme-light-bg-tertiary);
+  --surface: var(--theme-light-surface);
+  --surface-elevated: var(--theme-light-surface-elevated);
+  --border: var(--theme-light-border);
+  --text-primary: var(--theme-light-text-primary);
+  --text-secondary: var(--theme-light-text-secondary);
+  --text-tertiary: var(--theme-light-text-tertiary);
+  --highlight-bg: var(--theme-light-highlight-bg);
+  --highlight-text: var(--theme-light-highlight-text);
+}
+
+/* Dark theme variables (explicit) */
+.dark-theme {
+  --bg-primary: var(--theme-dark-bg-primary);
+  --bg-secondary: var(--theme-dark-bg-secondary);
+  --bg-tertiary: var(--theme-dark-bg-tertiary);
+  --surface: var(--theme-dark-surface);
+  --surface-elevated: var(--theme-dark-surface-elevated);
+  --border: var(--theme-dark-border);
+  --text-primary: var(--theme-dark-text-primary);
+  --text-secondary: var(--theme-dark-text-secondary);
+  --text-tertiary: var(--theme-dark-text-tertiary);
+  --highlight-bg: var(--theme-dark-highlight-bg);
+  --highlight-text: var(--theme-dark-highlight-text);
+}

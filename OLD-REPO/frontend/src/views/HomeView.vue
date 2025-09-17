@@ -4,13 +4,24 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useGambaStore } from '@/stores/gamba'
 import { useTestStore } from '@/stores/test'
+import { useThemeStore } from '@/stores/theme'
+import { useChatStore } from '@/stores/chat'
+import { useRouter } from 'vue-router'
 import { Chart } from 'chart.js/auto'
+import { marked } from 'marked'
 
 const tab = ref(1)
 const gamba = useGambaStore()
 const auth = useAuthStore()
 const test = useTestStore()
+const theme = useThemeStore()
+const chatStore = useChatStore()
+const router = useRouter()
 const loading_data = ref(false)
+
+// Sorting state for tables
+const sortColumn = ref('')
+const sortDirection = ref<'asc' | 'desc'>('desc')
 
 // Tab configuration with icons
 const tabs = [
@@ -34,6 +45,11 @@ const tabs = [
     label: 'Predictions',
     icon: 'TrendingIcon',
   },
+  {
+    value: 5,
+    label: 'Chat',
+    icon: 'ChatIcon',
+  },
 ]
 
 // Icon mapping for MDI icons
@@ -42,6 +58,7 @@ const iconMap: Record<string, string> = {
   ChartIcon: 'mdi-chart-line',
   TrophyIcon: 'mdi-trophy',
   TrendingIcon: 'mdi-trending-up',
+  ChatIcon: 'mdi-robot',
 }
 
 const file_one = ref<File | null>(null)
@@ -64,6 +81,66 @@ const start_date = shallowRef<Date | null>(null)
 const end_date = shallowRef<Date | null>(null)
 
 const result_data = ref<any | null>(null)
+
+// Chat refs
+const messagesContainer = ref<HTMLElement>()
+const messageInput = ref<HTMLTextAreaElement>()
+const currentMessage = ref('')
+
+// Validation functions for numeric inputs
+const validateNonNegative = (value: number | null): number | null => {
+  if (value === null || value === undefined) return null
+  return Math.max(0, value)
+}
+
+const validateHitFrequency = (value: number | null): number | null => {
+  return validateNonNegative(value)
+}
+
+const validateMaxExposure = (value: number | null): number | null => {
+  return validateNonNegative(value)
+}
+
+const validateMinMaxBet = (value: number | null): number | null => {
+  return validateNonNegative(value)
+}
+
+// Watchers for automatic validation
+watch(hit_frequency_from, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    hit_frequency_from.value = 0
+  }
+})
+
+watch(hit_frequency_to, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    hit_frequency_to.value = 0
+  }
+})
+
+watch(max_exposure_from, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    max_exposure_from.value = 0
+  }
+})
+
+watch(max_exposure_to, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    max_exposure_to.value = 0
+  }
+})
+
+watch(min_max_bet_from, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    min_max_bet_from.value = 0
+  }
+})
+
+watch(min_max_bet_to, (newValue) => {
+  if (newValue !== null && newValue < 0) {
+    min_max_bet_to.value = 0
+  }
+})
 
 const simulateCalculate = async () => {
   if (!auth.token) {
@@ -134,6 +211,10 @@ const simulateCalculate = async () => {
     })
     console.log('response', response.data)
     result_data.value = response.data.data
+
+    // Store data in chat store for AI assistance
+    chatStore.setCalculateData(response.data.data)
+
     loading_data.value = false
     nextTick(() => {
       setupDataRender()
@@ -148,6 +229,100 @@ const simulateCalculate = async () => {
     }
   }
 }
+
+// Function to switch to chat tab with analysis data
+const goToChat = () => {
+  if (result_data.value) {
+    // Ensure chat store has the latest data
+    chatStore.setCalculateData(result_data.value)
+    // Switch to Chat tab (tab 5)
+    tab.value = 5
+  }
+}
+
+// Chat functions
+// Auto-scroll to bottom when new messages arrive
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
+
+// Watch for new messages and scroll
+watch(
+  () => chatStore.messages.length,
+  () => {
+    scrollToBottom()
+  },
+)
+
+// Watch for loading state changes
+watch(
+  () => chatStore.isLoading,
+  (isLoading) => {
+    if (!isLoading) {
+      scrollToBottom()
+    }
+  },
+)
+
+// Format message content with markdown
+const formatMessage = (content: string): string => {
+  try {
+    return marked.parse(content) as string
+  } catch (error) {
+    console.error('Error formatting message:', error)
+    return content
+  }
+}
+
+// Format timestamp
+const formatTime = (timestamp: Date): string => {
+  return timestamp.toLocaleTimeString('sr-RS', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// Handle Enter key press
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    sendMessage()
+  }
+}
+
+// Send message
+const sendMessage = async () => {
+  if (!currentMessage.value.trim() || chatStore.isLoading) return
+
+  const message = currentMessage.value.trim()
+  currentMessage.value = ''
+
+  const result = await chatStore.sendMessage(message)
+
+  if (!result.success && result.error) {
+    // Error is already handled in the store and displayed in the UI
+    console.error('Failed to send message:', result.error)
+  }
+}
+
+// Auto-resize textarea
+const autoResize = () => {
+  if (messageInput.value) {
+    messageInput.value.style.height = 'auto'
+    messageInput.value.style.height = messageInput.value.scrollHeight + 'px'
+  }
+}
+
+// Watch for changes in currentMessage to auto-resize
+watch(currentMessage, () => {
+  nextTick(() => {
+    autoResize()
+  })
+})
 
 function excelSerialToMonthYear(serial: number, use1904System = false) {
   // Excel's base date
@@ -254,6 +429,61 @@ const formatNumber = (num: number) => {
   }).format(num)
 }
 
+// Sorting function
+const sortTable = (column: string) => {
+  if (sortColumn.value === column) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn.value = column
+    sortDirection.value = 'desc'
+  }
+}
+
+// Get sorted partners
+const getSortedPartners = (partners: any[]) => {
+  if (!sortColumn.value) {
+    // If no sorting, just add row numbers
+    return partners.map((partner: any, index: number) => ({
+      ...partner,
+      rank: index + 1,
+    }))
+  }
+
+  const sortedPartners = [...partners].sort((a, b) => {
+    let aValue = 0
+    let bValue = 0
+
+    switch (sortColumn.value) {
+      case 'avg_ggr':
+        aValue = a.avg_ggr || 0
+        bValue = b.avg_ggr || 0
+        break
+      case 'avg_roi':
+        aValue = a.avg_roi || 0
+        bValue = b.avg_roi || 0
+        break
+      case 'combined_score':
+        aValue = a.combined_score || 0
+        bValue = b.combined_score || 0
+        break
+      default:
+        return 0
+    }
+
+    if (sortDirection.value === 'asc') {
+      return aValue - bValue
+    } else {
+      return bValue - aValue
+    }
+  })
+
+  // Add row numbers after sorting
+  return sortedPartners.map((partner: any, index: number) => ({
+    ...partner,
+    rank: index + 1,
+  }))
+}
+
 const getPartnerRecommendations = (recommendations: any) => {
   let partners = []
   if (recommendations.type === 'partners') {
@@ -325,7 +555,7 @@ const getPartnerRecommendationsWithRank = (recommendations: any) => {
   const partners = getPartnerRecommendations(recommendations)
   return partners.map((partner: any, index: number) => ({
     ...partner,
-    rank: index + 1,
+    originalRank: index + 1, // Original rank based on combined_score
     partner_name: getPartnerName(partner.partner_id),
   }))
 }
@@ -334,7 +564,7 @@ const getTrzisteRecommendationsWithRank = (recommendations: any) => {
   const trzista = getTrzisteRecommendations(recommendations)
   return trzista.map((trziste: any, index: number) => ({
     ...trziste,
-    rank: index + 1,
+    originalRank: index + 1, // Original rank based on combined_score
     trziste_name: getTrzisteName(trziste.trziste_id),
   }))
 }
@@ -420,163 +650,89 @@ onMounted(() => {
 <template>
   <div class="home-container">
     <!-- Modern Header -->
-    <header class="app-header">
-      <div class="header-content">
-        <div class="header-left">
-          <div class="logo-section">
-            <div class="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
+    <!-- Sticky Header Container -->
+    <div class="sticky-header-container">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-content">
+          <div class="header-left">
+            <div class="logo-section">
+              <div class="logo-icon">
+                <img
+                  v-if="theme.isDark"
+                  src="@/assets/logo-dark.svg"
+                  alt="FAZI AI Analytics Logo"
+                  class="logo-image"
                 />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
+                <img
+                  v-else
+                  src="@/assets/logo-light.svg"
+                  alt="FAZI AI Analytics Logo"
+                  class="logo-image"
                 />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              </div>
             </div>
-            <h1 class="app-title gradient-text">FAZI AI Analytics</h1>
           </div>
-        </div>
-        <div class="header-right">
-          <div class="user-info">
-            <div class="user-avatar">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle
-                  cx="12"
-                  cy="7"
-                  r="4"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-            <span class="user-name">Admin</span>
-          </div>
-        </div>
-      </div>
-    </header>
 
-    <!-- Modern Navigation Tabs -->
-    <nav class="nav-tabs">
-      <div class="nav-container">
-        <button
-          v-for="tabItem in tabs"
-          :key="tabItem.value"
-          @click="tab = tabItem.value"
-          class="nav-tab"
-          :class="{ active: tab === tabItem.value }"
-        >
-          <div class="tab-icon">
-            <i :class="iconMap[tabItem.icon]" class="mdi"></i>
+          <div class="header-right">
+            <button
+              @click="theme.toggleTheme()"
+              class="theme-toggle-button"
+              :title="theme.isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'"
+            >
+              <v-icon
+                :icon="theme.isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                class="theme-toggle-icon"
+              />
+            </button>
           </div>
-          <span class="tab-label">{{ tabItem.label }}</span>
-          <div class="tab-indicator"></div>
-        </button>
+        </div>
+      </header>
+
+      <!-- Tab Navigation Container -->
+      <div class="tab-navigation-container">
+        <v-tabs
+          v-model="tab"
+          class="custom-tabs"
+          color="primary"
+          align-tabs="center"
+          density="comfortable"
+        >
+          <v-tab
+            v-for="tabItem in tabs"
+            :key="tabItem.value"
+            :value="tabItem.value"
+            class="custom-tab"
+          >
+            <v-icon :icon="iconMap[tabItem.icon]" class="tab-icon" />
+            <span class="tab-label">{{ tabItem.label }}</span>
+          </v-tab>
+        </v-tabs>
       </div>
-    </nav>
+    </div>
 
     <!-- Tab Content -->
-    <div class="tab-content">
+    <v-tabs-window v-model="tab" class="tab-content">
       <!-- Parameters Tab -->
-      <div v-if="tab === 1" class="tab-panel animate-fade-in">
+      <v-tabs-window-item :value="1" class="tab-panel animate-fade-in">
         <div class="panel-container">
           <!-- File Upload Section -->
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M14 2V8H20"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M16 13H8"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M16 17H8"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M10 9H8"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-file-document-outline" />
               </div>
-              <h2 class="section-title">Data Files</h2>
-              <p class="section-description">Upload your training and game data files</p>
+              <div>
+                <h2 class="section-title">Data Files</h2>
+                <p class="section-description">Upload your training and game data files</p>
+              </div>
             </div>
 
             <div class="file-upload-grid">
               <div class="file-upload-card">
-                <div class="upload-area" :class="{ 'has-file': file_one }">
+                <div class="upload-area pt-6" :class="{ 'has-file': file_one }">
                   <div class="upload-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <polyline
-                        points="7,10 12,15 17,10"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <line
-                        x1="12"
-                        y1="15"
-                        x2="12"
-                        y2="3"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <v-icon icon="mdi-tray-arrow-up" />
                   </div>
                   <h3 class="upload-title">Training Data</h3>
                   <p class="upload-description">Upload your training data Excel file</p>
@@ -598,34 +754,9 @@ onMounted(() => {
               </div>
 
               <div class="file-upload-card">
-                <div class="upload-area" :class="{ 'has-file': file_two }">
+                <div class="upload-area pt-6" :class="{ 'has-file': file_two }">
                   <div class="upload-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <polyline
-                        points="7,10 12,15 17,10"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <line
-                        x1="12"
-                        y1="15"
-                        x2="12"
-                        y2="3"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
+                    <v-icon icon="mdi-tray-arrow-up" />
                   </div>
                   <h3 class="upload-title">Game Data</h3>
                   <p class="upload-description">Upload your game data Excel file</p>
@@ -652,25 +783,12 @@ onMounted(() => {
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M3 3V21H21"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M9 9L12 6L16 10L20 6"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-chart-line" />
               </div>
-              <h2 class="section-title">ROI/NP Combinations</h2>
-              <p class="section-description">Select ROI and NP combinations for analysis</p>
+              <div>
+                <h2 class="section-title">ROI/NP Combinations</h2>
+                <p class="section-description">Select ROI and NP combinations for analysis</p>
+              </div>
             </div>
 
             <div class="roi-np-table-container">
@@ -704,27 +822,12 @@ onMounted(() => {
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M21 10C21 17 12 23 12 23S3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.3639 3.63604C20.0518 5.32387 21 7.61305 21 10Z"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <circle
-                    cx="12"
-                    cy="10"
-                    r="3"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-map-marker-outline" />
               </div>
-              <h2 class="section-title">Market & Partner Selection</h2>
-              <p class="section-description">Choose markets and partners for analysis</p>
+              <div>
+                <h2 class="section-title">Market & Partner Selection</h2>
+                <p class="section-description">Choose markets and partners for analysis</p>
+              </div>
             </div>
 
             <div class="filters-grid">
@@ -742,6 +845,7 @@ onMounted(() => {
                   density="comfortable"
                   placeholder="Select markets..."
                   clearable
+                  selected-class="no-highlight"
                   class="vuetify-autocomplete"
                 />
               </div>
@@ -760,6 +864,7 @@ onMounted(() => {
                   density="comfortable"
                   placeholder="Select partners..."
                   clearable
+                  selected-class="no-highlight"
                   class="vuetify-autocomplete"
                 />
               </div>
@@ -770,56 +875,31 @@ onMounted(() => {
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect
-                    x="3"
-                    y="3"
-                    width="18"
-                    height="18"
-                    rx="2"
-                    ry="2"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <circle
-                    cx="8.5"
-                    cy="8.5"
-                    r="1.5"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <polyline
-                    points="21,15 16,10 5,21"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-filter-outline" />
               </div>
-              <h2 class="section-title">Game Filters</h2>
-              <p class="section-description">
-                Filter games by volatility, features, and categories
-              </p>
+              <div>
+                <h2 class="section-title">Game Filters</h2>
+                <p class="section-description">
+                  Filter games by volatility, features, and categories
+                </p>
+              </div>
             </div>
 
             <div class="filters-grid">
               <div class="filter-group">
                 <label class="filter-label">Game Volatility</label>
-                <select v-model="selected_volatility" class="modern-select">
-                  <option value="">All Volatilities</option>
-                  <option
-                    v-for="vol in gamba.volatility_data"
-                    :key="vol.volatility_id"
-                    :value="vol.volatility_id"
-                  >
-                    {{ vol.label }}
-                  </option>
-                </select>
+                <v-select
+                  v-model="selected_volatility"
+                  :items="gamba.volatility_data"
+                  item-title="label"
+                  item-value="volatility_id"
+                  variant="outlined"
+                  density="comfortable"
+                  placeholder="All Volatilities"
+                  clearable
+                  selected-class="no-highlight"
+                  class="vuetify-autocomplete"
+                />
               </div>
 
               <div class="filter-group">
@@ -836,6 +916,7 @@ onMounted(() => {
                   density="comfortable"
                   placeholder="Select features..."
                   clearable
+                  selected-class="no-highlight"
                   class="vuetify-autocomplete"
                 />
               </div>
@@ -854,6 +935,7 @@ onMounted(() => {
                   density="comfortable"
                   placeholder="Select categories..."
                   clearable
+                  selected-class="no-highlight"
                   class="vuetify-autocomplete"
                 />
               </div>
@@ -864,27 +946,14 @@ onMounted(() => {
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M12 1V23"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6312 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6312 13.6815 18 14.5717 18 15.5C18 16.4283 17.6312 17.3185 16.9749 17.9749C16.3185 18.6312 15.4283 19 14.5 19H6"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-sort-numeric-variant" />
               </div>
-              <h2 class="section-title">Numeric Filters</h2>
-              <p class="section-description">
-                Set ranges for hit frequency, exposure, and bet amounts
-              </p>
+              <div>
+                <h2 class="section-title">Numeric Filters</h2>
+                <p class="section-description">
+                  Set ranges for hit frequency, exposure, and bet amounts
+                </p>
+              </div>
             </div>
 
             <div class="numeric-filters-grid">
@@ -896,13 +965,17 @@ onMounted(() => {
                     v-model="hit_frequency_from"
                     placeholder="From"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
-                  <span class="range-separator">to</span>
+                  <span class="range-separator">-</span>
                   <input
                     type="number"
                     v-model="hit_frequency_to"
                     placeholder="To"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -915,13 +988,17 @@ onMounted(() => {
                     v-model="max_exposure_from"
                     placeholder="From"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
-                  <span class="range-separator">to</span>
+                  <span class="range-separator">-</span>
                   <input
                     type="number"
                     v-model="max_exposure_to"
                     placeholder="To"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -934,13 +1011,17 @@ onMounted(() => {
                     v-model="min_max_bet_from"
                     placeholder="From"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
-                  <span class="range-separator">to</span>
+                  <span class="range-separator">-</span>
                   <input
                     type="number"
                     v-model="min_max_bet_to"
                     placeholder="To"
                     class="range-input"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -951,64 +1032,37 @@ onMounted(() => {
           <div class="section-card">
             <div class="section-header">
               <div class="section-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect
-                    x="3"
-                    y="4"
-                    width="18"
-                    height="18"
-                    rx="2"
-                    ry="2"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <line
-                    x1="16"
-                    y1="2"
-                    x2="16"
-                    y2="6"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <line
-                    x1="8"
-                    y1="2"
-                    x2="8"
-                    y2="6"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <line
-                    x1="3"
-                    y1="10"
-                    x2="21"
-                    y2="10"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <v-icon icon="mdi-calendar-outline" />
               </div>
-              <h2 class="section-title">Date Range</h2>
-              <p class="section-description">Set the date range for game release analysis</p>
+              <div>
+                <h2 class="section-title">Date Range</h2>
+                <p class="section-description">Set the date range for game release analysis</p>
+              </div>
             </div>
 
             <div class="filters-grid">
               <div class="filter-group">
                 <label class="filter-label">Start Date</label>
-                <input type="date" v-model="start_date" class="modern-select" />
+                <v-date-input
+                  v-model="start_date"
+                  variant="outlined"
+                  density="comfortable"
+                  placeholder="Select start date"
+                  clearable
+                  class="vuetify-autocomplete"
+                />
               </div>
 
               <div class="filter-group">
                 <label class="filter-label">End Date</label>
-                <input type="date" v-model="end_date" class="modern-select" />
+                <v-date-input
+                  v-model="end_date"
+                  variant="outlined"
+                  density="comfortable"
+                  placeholder="Select end date"
+                  clearable
+                  class="vuetify-autocomplete"
+                />
               </div>
             </div>
           </div>
@@ -1023,157 +1077,138 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </v-tabs-window-item>
 
-    <!-- Results Tab -->
-    <div v-if="tab === 2" class="tab-panel animate-fade-in">
-      <div class="panel-container">
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M3 3V21H21"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M9 9L12 6L16 10L20 6"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-            <h2 class="section-title">Analysis Results</h2>
-            <p class="section-description">View your calculation results and charts</p>
-          </div>
-
-          <div v-if="loading_data" class="loading-overlay">
-            <div class="loading-content">
-              <div class="loading-spinner-large"></div>
-              <div class="loading-text">Processing your data...</div>
-            </div>
-          </div>
-
-          <div v-if="result_data" class="results-container">
-            <div
-              v-for="group in result_data.grouped_training_data"
-              :key="group.id"
-              class="result-group"
-            >
-              <div class="group-header">
-                <h3 class="group-title">
-                  ROI:
-                  {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
-                </h3>
-                <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
+      <!-- Results Tab -->
+      <v-tabs-window-item :value="2" class="tab-panel animate-fade-in">
+        <div class="panel-container">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon">
+                <v-icon icon="mdi-chart-line" />
               </div>
-              <div class="chart-container">
-                <canvas :id="`test-${group.id}`"></canvas>
+              <div>
+                <h2 class="section-title">Analysis Results</h2>
+                <p class="section-description">View your calculation results and charts</p>
+              </div>
+            </div>
+
+            <v-overlay v-model="loading_data" class="align-center justify-center" persistent>
+              <div class="loading-content">
+                <v-progress-circular
+                  indeterminate
+                  color="primary"
+                  size="48"
+                  width="4"
+                  class="loading-spinner-large"
+                />
+                <div class="loading-text">Processing your data...</div>
+              </div>
+            </v-overlay>
+
+            <div v-if="result_data" class="results-container">
+              <div
+                v-for="group in result_data.grouped_training_data"
+                :key="group.id"
+                class="result-group"
+              >
+                <div class="group-header">
+                  <h3 class="group-title">
+                    ROI:
+                    {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
+                  </h3>
+                  <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
+                </div>
+                <div class="chart-container">
+                  <canvas :id="`test-${group.id}`"></canvas>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </v-tabs-window-item>
 
-    <!-- Best Performing Tab -->
-    <div v-if="tab === 3" class="tab-panel animate-fade-in">
-      <div class="panel-container">
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M6 9H4C3.44772 9 3 9.44772 3 10V11C3 13.7614 5.23858 16 8 16H16C18.7614 16 21 13.7614 21 11V10C21 9.44772 20.5523 9 20 9H18"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M6 9V7C6 4.79086 7.79086 3 10 3H14C16.2091 3 18 4.79086 18 7V9"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M6 9H18V13C18 15.2091 16.2091 17 14 17H10C7.79086 17 6 15.2091 6 13V9Z"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M8 21H16"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M12 17V21"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-            <h2 class="section-title">Best Performing Analysis</h2>
-            <p class="section-description">Top performing partners and markets</p>
-          </div>
-
-          <div v-if="result_data && result_data.best_performing_analysis" class="analysis-results">
-            <div
-              v-for="group in result_data.best_performing_analysis"
-              :key="group.group_id"
-              class="analysis-group"
-            >
-              <div class="group-header">
-                <h3 class="group-title">
-                  ROI:
-                  {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
-                </h3>
-                <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
+      <!-- Best Performing Tab -->
+      <v-tabs-window-item :value="3" class="tab-panel animate-fade-in">
+        <div class="panel-container">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon">
+                <v-icon icon="mdi-trophy-outline" />
               </div>
+              <div>
+                <h2 class="section-title">Best Performing Analysis</h2>
+                <p class="section-description">Top performing partners and markets</p>
+              </div>
+            </div>
 
-              <div v-if="!group.recommendations.analysis_skipped" class="recommendations">
-                <h4 class="recommendations-title">{{ group.recommendations.message }}</h4>
+            <div
+              v-if="result_data && result_data.best_performing_analysis"
+              class="analysis-results"
+            >
+              <div
+                v-for="group in result_data.best_performing_analysis"
+                :key="group.group_id"
+                class="analysis-group"
+              >
+                <div class="group-header">
+                  <h3 class="group-title">
+                    ROI:
+                    {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
+                  </h3>
+                  <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
+                </div>
 
-                <!-- Partners Table -->
-                <div
-                  v-if="
-                    group.recommendations.type === 'partners' ||
-                    group.recommendations.type === 'both'
-                  "
-                  class="table-section"
-                >
-                  <h5 class="table-title">Best Performing Partners</h5>
-                  <div class="modern-table">
-                    <div class="table-header">
-                      <div class="table-cell">Rank</div>
-                      <div class="table-cell">Partner</div>
-                      <div class="table-cell">Avg GGR</div>
-                      <div class="table-cell">Avg ROI</div>
-                      <div class="table-cell">Score</div>
-                    </div>
-                    <div
-                      v-for="partner in getPartnerRecommendationsWithRank(group.recommendations)"
-                      :key="partner.partner_id"
-                      class="table-row"
-                    >
-                      <div class="table-cell rank">{{ partner.rank }}</div>
-                      <div class="table-cell">{{ partner.partner_name }}</div>
-                      <div class="table-cell">{{ formatNumber(partner.avg_ggr) }}</div>
-                      <div class="table-cell">{{ formatNumber(partner.avg_roi) }}</div>
-                      <div class="table-cell score">{{ formatNumber(partner.combined_score) }}</div>
+                <div v-if="!group.recommendations.analysis_skipped" class="recommendations">
+                  <h4 class="recommendations-title">{{ group.recommendations.message }}</h4>
+
+                  <!-- Partners Table -->
+                  <div
+                    v-if="
+                      group.recommendations.type === 'partners' ||
+                      group.recommendations.type === 'both'
+                    "
+                    class="table-section"
+                  >
+                    <h5 class="table-title">Best Performing Partners</h5>
+                    <div class="modern-table">
+                      <div class="table-header">
+                        <div class="table-cell">Rank</div>
+                        <div class="table-cell">Partner</div>
+                        <div class="table-cell sortable" @click="sortTable('avg_ggr')">
+                          Avg GGR
+                          <span v-if="sortColumn === 'avg_ggr'" class="sort-indicator">
+                            {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                          </span>
+                        </div>
+                        <div class="table-cell sortable" @click="sortTable('avg_roi')">
+                          Avg ROI
+                          <span v-if="sortColumn === 'avg_roi'" class="sort-indicator">
+                            {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                          </span>
+                        </div>
+                        <div class="table-cell sortable" @click="sortTable('combined_score')">
+                          Score
+                          <span v-if="sortColumn === 'combined_score'" class="sort-indicator">
+                            {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        v-for="partner in getSortedPartners(
+                          getPartnerRecommendationsWithRank(group.recommendations),
+                        )"
+                        :key="partner.partner_id"
+                        class="table-row"
+                      >
+                        <div class="table-cell rank">{{ partner.rank }}</div>
+                        <div class="table-cell">{{ partner.partner_name }}</div>
+                        <div class="table-cell">{{ formatNumber(partner.avg_ggr) }}</div>
+                        <div class="table-cell">{{ formatNumber(partner.avg_roi) }}</div>
+                        <div class="table-cell score">
+                          {{ formatNumber(partner.combined_score) }}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1181,152 +1216,94 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </v-tabs-window-item>
 
-    <!-- Predictions Tab -->
-    <div v-if="tab === 4" class="tab-panel animate-fade-in">
-      <div class="panel-container">
-        <div class="section-card">
-          <div class="section-header">
-            <div class="section-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M22 7L13.5 15.5L8.5 10.5L2 17"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M16 7H22V13"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-            <h2 class="section-title">Predictions & Recommendations</h2>
-            <p class="section-description">AI-powered insights and forecasts</p>
-          </div>
-
-          <div
-            v-if="result_data && result_data.calculated_data_by_group"
-            class="predictions-container"
-          >
-            <div
-              v-for="group in result_data.calculated_data_by_group"
-              :key="`predictions-${group.np_id}-${group.roi_ids.join('-')}`"
-              class="prediction-group"
-            >
-              <div class="group-header">
-                <h3 class="group-title">
-                  ROI:
-                  {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
-                </h3>
-                <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
+      <!-- Predictions Tab -->
+      <v-tabs-window-item :value="4" class="tab-panel animate-fade-in">
+        <div class="panel-container">
+          <div class="section-card">
+            <div class="section-header">
+              <div class="section-icon">
+                <v-icon icon="mdi-trending-up" />
               </div>
+              <div>
+                <h2 class="section-title">Predictions & Recommendations</h2>
+                <p class="section-description">AI-powered insights and forecasts</p>
+              </div>
+            </div>
 
-              <div class="predictions-grid">
-                <!-- Promotion Recommendation Card -->
-                <div class="prediction-card">
-                  <div class="card-header">
-                    <div class="card-icon">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M22 7L13.5 15.5L8.5 10.5L2 17"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M16 7H22V13"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </div>
-                    <h4 class="card-title">Promotion Recommendation</h4>
-                  </div>
-                  <div v-if="group['Promotion Recommendation']" class="card-content">
-                    <div class="metric-value">
-                      {{ formatNumber(group['Promotion Recommendation'].recommended_amount) }}
-                    </div>
-                    <div class="metric-label">Recommended Amount</div>
-                    <div class="confidence-badge">
-                      {{ formatNumber(group['Promotion Recommendation'].confidence) }}% confidence
-                    </div>
-                  </div>
+            <div
+              v-if="result_data && result_data.calculated_data_by_group"
+              class="predictions-container"
+            >
+              <div
+                v-for="group in result_data.calculated_data_by_group"
+                :key="`predictions-${group.np_id}-${group.roi_ids.join('-')}`"
+                class="prediction-group"
+              >
+                <div class="group-header">
+                  <h3 class="group-title">
+                    ROI:
+                    {{ group.roi_ids.map((id: number) => gamba.getROILabelFromID(id)).join(', ') }}
+                  </h3>
+                  <p class="group-subtitle">NP: {{ gamba.getNPLabelFromID(group.np_id) }}</p>
                 </div>
 
-                <!-- GGR Prediction Card -->
-                <div class="prediction-card">
-                  <div class="card-header">
-                    <div class="card-icon">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M3 3V21H21"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M9 9L12 6L16 10L20 6"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+                <div class="predictions-grid">
+                  <!-- Promotion Recommendation Card -->
+                  <div class="prediction-card">
+                    <div class="card-header">
+                      <div class="card-icon">
+                        <v-icon icon="mdi-trending-up" />
+                      </div>
+                      <h4 class="card-title">Promotion Recommendation</h4>
                     </div>
-                    <h4 class="card-title">GGR Prediction</h4>
-                  </div>
-                  <div v-if="group['GGR Prediction']" class="card-content">
-                    <div class="metric-value">
-                      {{ formatNumber(group['GGR Prediction'].predicted_ggr) }}
-                    </div>
-                    <div class="metric-label">Predicted GGR</div>
-                    <div class="confidence-badge">
-                      {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                    <div v-if="group['Promotion Recommendation']" class="card-content">
+                      <div class="metric-value">
+                        {{ formatNumber(group['Promotion Recommendation'].recommended_amount) }}
+                      </div>
+                      <div class="metric-label">Recommended Amount</div>
+                      <div class="confidence-badge">
+                        {{ formatNumber(group['Promotion Recommendation'].confidence) }}% confidence
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- NP Prediction Card -->
-                <div class="prediction-card">
-                  <div class="card-header">
-                    <div class="card-icon">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M12 1V23"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                        <path
-                          d="M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6312 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6312 13.6815 18 14.5717 18 15.5C18 16.4283 17.6312 17.3185 16.9749 17.9749C16.3185 18.6312 15.4283 19 14.5 19H6"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+                  <!-- GGR Prediction Card -->
+                  <div class="prediction-card">
+                    <div class="card-header">
+                      <div class="card-icon">
+                        <v-icon icon="mdi-chart-line" />
+                      </div>
+                      <h4 class="card-title">GGR Prediction</h4>
                     </div>
-                    <h4 class="card-title">NP Amount Prediction</h4>
+                    <div v-if="group['GGR Prediction']" class="card-content">
+                      <div class="metric-value">
+                        {{ formatNumber(group['GGR Prediction'].predicted_ggr) }}
+                      </div>
+                      <div class="metric-label">Predicted GGR</div>
+                      <div class="confidence-badge">
+                        {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                      </div>
+                    </div>
                   </div>
-                  <div v-if="group['NP Prediction']" class="card-content">
-                    <div class="metric-value">
-                      {{ formatNumber(group['NP Prediction'].predicted_np_amount) }}
+
+                  <!-- NP Prediction Card -->
+                  <div class="prediction-card">
+                    <div class="card-header">
+                      <div class="card-icon">
+                        <v-icon icon="mdi-swap-vertical" />
+                      </div>
+                      <h4 class="card-title">NP Amount Prediction</h4>
                     </div>
-                    <div class="metric-label">Predicted NP Amount</div>
-                    <div class="confidence-badge">
-                      {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                    <div v-if="group['NP Prediction']" class="card-content">
+                      <div class="metric-value">
+                        {{ formatNumber(group['NP Prediction'].predicted_np_amount) }}
+                      </div>
+                      <div class="metric-label">Predicted NP Amount</div>
+                      <div class="confidence-badge">
+                        {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1334,8 +1311,106 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </v-tabs-window-item>
+
+      <!-- Chat Tab -->
+      <v-tabs-window-item :value="5" class="tab-panel animate-fade-in">
+        <div class="chat-tab-container">
+          <!-- No Data Warning -->
+          <div v-if="!chatStore.hasCalculateData" class="no-data-warning">
+            <v-icon icon="mdi-alert-circle" size="64" class="warning-icon" />
+            <h3>Nema dostupnih podataka za analizu</h3>
+            <p>
+              Da biste mogli da postavljate pitanja AI asistentu, prvo morate da pokrenete analizu.
+            </p>
+            <v-btn color="primary" size="large" @click="tab = 1" class="go-to-analysis-btn">
+              <v-icon icon="mdi-chart-line" class="mr-2" />
+              Idi na analizu
+            </v-btn>
+          </div>
+
+          <!-- Chat Interface -->
+          <div v-else class="chat-interface">
+            <!-- Messages Container -->
+            <div ref="messagesContainer" class="messages-container">
+              <div v-if="chatStore.messageCount === 0" class="welcome-message">
+                <v-icon icon="mdi-robot" size="48" class="welcome-icon" />
+                <h3>Dobrodošli u AI asistent!</h3>
+                <p>Postavite pitanje o analiziranim podacima. Evo nekoliko primera:</p>
+                <ul class="example-questions">
+                  <li>"Kog operatera mi preporučuješ na srpskom tržištu?"</li>
+                  <li>"Koje su najbolje performanse u poslednjoj analizi?"</li>
+                  <li>"Objasni mi predikcije za GGR"</li>
+                  <li>"Koje igre imaju najbolji ROI?"</li>
+                </ul>
+              </div>
+
+              <!-- Messages -->
+              <div
+                v-for="message in chatStore.messages"
+                :key="message.id"
+                :class="['message', `message-${message.role}`]"
+              >
+                <div class="message-avatar">
+                  <v-icon
+                    :icon="message.role === 'assistant' ? 'mdi-robot' : 'mdi-account'"
+                    class="avatar-icon"
+                    :class="message.role === 'assistant' ? 'assistant-avatar' : 'user-avatar'"
+                  />
+                </div>
+                <div class="message-content">
+                  <div class="message-text" v-html="formatMessage(message.content)"></div>
+                  <div class="message-time">
+                    {{ formatTime(message.timestamp) }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Loading Indicator -->
+              <div v-if="chatStore.isLoading" class="message message-assistant">
+                <div class="message-avatar">
+                  <v-icon icon="mdi-robot" class="avatar-icon assistant-avatar" />
+                </div>
+                <div class="message-content">
+                  <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+              <div v-if="chatStore.error" class="error-message">
+                <v-icon icon="mdi-alert-circle" class="error-icon" />
+                {{ chatStore.error }}
+              </div>
+
+              <div class="input-container">
+                <textarea
+                  ref="messageInput"
+                  v-model="currentMessage"
+                  :disabled="chatStore.isLoading"
+                  placeholder="Postavite pitanje o analiziranim podacima..."
+                  class="message-input"
+                  @keydown="handleKeyDown"
+                  rows="1"
+                ></textarea>
+                <v-btn
+                  @click="sendMessage"
+                  :disabled="!currentMessage.trim() || chatStore.isLoading"
+                  icon="mdi-send"
+                  class="send-button"
+                  size="small"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </div>
 </template>
 
@@ -1402,29 +1477,40 @@ onMounted(() => {
 /* Modern Header Styles */
 .home-container {
   min-height: 100vh;
-  background: var(--dark-bg-primary);
+  background: var(--bg-primary);
+}
+
+/* Sticky Header Container */
+.sticky-header-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
 }
 
 .app-header {
-  background: var(--dark-surface);
-  border-bottom: 1px solid var(--dark-border);
-  padding: var(--space-lg) 0;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  background: var(--surface);
+  padding: var(--space-lg);
   backdrop-filter: blur(20px);
 }
 
 .header-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 var(--space-xl);
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
   display: flex;
   align-items: center;
 }
@@ -1442,119 +1528,160 @@ onMounted(() => {
   animation: pulse 2s ease-in-out infinite;
 }
 
+.logo-image {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
 .app-title {
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--dark-surface-elevated);
+/* Theme Toggle Button */
+.theme-toggle-button {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--dark-border);
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  color: var(--primary-400);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-name {
-  color: var(--dark-text-primary);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-/* Modern Navigation Tabs */
-.nav-tabs {
-  background: var(--dark-surface);
-  border-bottom: 1px solid var(--dark-border);
-  padding: 0;
-  position: sticky;
-  top: 80px;
-  z-index: 99;
-}
-
-.nav-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 var(--space-xl);
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.nav-tab {
-  background: none;
-  border: none;
-  padding: var(--space-md) var(--space-lg);
-  color: var(--dark-text-secondary);
+  padding: var(--space-sm);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all var(--transition-normal);
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.nav-tab:hover {
-  color: var(--dark-text-primary);
-  background: var(--dark-surface-elevated);
-}
-
-.nav-tab.active {
-  color: var(--primary-400);
-  background: var(--dark-bg-primary);
-  border-bottom: 2px solid var(--primary-500);
-}
-
-.tab-icon {
-  width: 20px;
-  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 44px;
+  height: 44px;
+  position: relative;
+  overflow: hidden;
 }
 
-.tab-label {
-  white-space: nowrap;
+.theme-toggle-button:hover {
+  background: var(--surface);
+  border-color: var(--primary-500);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.tab-indicator {
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 2px;
-  background: var(--primary-500);
-  transition: width var(--transition-normal);
+.theme-toggle-button:active {
+  transform: translateY(0);
 }
 
-.nav-tab.active .tab-indicator {
-  width: 100%;
+.theme-toggle-icon {
+  font-size: 20px;
+  transition: all var(--transition-normal);
+}
+
+.theme-toggle-button:hover .theme-toggle-icon {
+  color: var(--primary-400);
+  transform: scale(1.1);
+}
+
+/* Tab Navigation Container */
+.tab-navigation-container {
+  background: var(--surface-elevated) !important;
+  border-bottom: 1px solid var(--border) !important;
+  width: 100% !important;
+}
+
+/* Vuetify Tabs Custom Styling */
+.custom-tabs {
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  min-height: 80px !important;
+  max-width: 1400px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.custom-tabs :deep(.v-tabs-bar) {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 24px !important;
+  height: 80px !important;
+}
+
+.custom-tabs :deep(.v-tab) {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  padding: 0 24px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  position: relative !important;
+  overflow: visible !important;
+  min-width: auto !important;
+  text-transform: none !important;
+  height: 80px !important;
+}
+
+.custom-tabs :deep(.v-tab:hover) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.custom-tabs :deep(.v-tab--selected) {
+  background: transparent !important;
+  color: var(--primary-400) !important;
+  box-shadow: none !important;
+}
+
+.custom-tabs :deep(.v-tab--selected::after) {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: var(--primary-500) !important;
+  border-radius: 0 !important;
+}
+
+.custom-tabs :deep(.v-tab .tab-icon) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 18px !important;
+  margin-right: 8px !important;
+}
+
+.custom-tabs :deep(.v-tab .tab-label) {
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+}
+
+.custom-tabs :deep(.v-tabs-slider) {
+  display: none !important;
 }
 
 /* Content Area */
-.v-tabs-window {
-  background: var(--dark-bg-primary);
+.tab-content {
+  background: var(--bg-primary);
   min-height: calc(100vh - 160px);
+  padding-top: 200px; /* Space for fixed header + tabs */
+}
+
+.tab-content :deep(.v-tabs-window) {
+  background: transparent !important;
+}
+
+.tab-content :deep(.v-tabs-window-item) {
+  background: transparent !important;
 }
 
 .v-container {
@@ -1573,24 +1700,43 @@ onMounted(() => {
     font-size: 1.2rem;
   }
 
-  .nav-container {
-    padding: 0 var(--space-md);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  .theme-toggle-button {
+    width: 40px;
+    height: 40px;
   }
 
-  .nav-container::-webkit-scrollbar {
-    display: none;
+  .theme-toggle-icon {
+    font-size: 18px;
   }
 
-  .nav-tab {
-    flex-shrink: 0;
-    padding: var(--space-sm) var(--space-md);
+  .tab-navigation-container {
+    margin-bottom: 16px !important;
   }
 
-  .tab-label {
-    display: none;
+  .custom-tabs {
+    min-height: 60px !important;
+  }
+
+  .custom-tabs :deep(.v-tabs-bar) {
+    padding: 0 var(--space-md) !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    height: 60px !important;
+  }
+
+  .custom-tabs :deep(.v-tabs-bar)::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .custom-tabs :deep(.v-tab) {
+    flex-shrink: 0 !important;
+    padding: 0 12px !important;
+    height: 60px !important;
+  }
+
+  .custom-tabs :deep(.v-tab .tab-label) {
+    display: none !important;
   }
 
   .v-container {
@@ -1608,16 +1754,21 @@ onMounted(() => {
     height: 32px;
   }
 
+  .logo-image {
+    height: 32px;
+  }
+
   .app-title {
     font-size: 1rem;
   }
 
-  .user-info {
-    padding: var(--space-xs) var(--space-sm);
+  .theme-toggle-button {
+    width: 36px;
+    height: 36px;
   }
 
-  .user-name {
-    display: none;
+  .theme-toggle-icon {
+    font-size: 16px;
   }
 }
 
@@ -1625,6 +1776,7 @@ onMounted(() => {
 .tab-content {
   min-height: calc(100vh - 160px);
   background: var(--dark-bg-primary);
+  padding-top: 200px; /* Space for fixed header + tabs */
 }
 
 .tab-panel {
@@ -1641,8 +1793,8 @@ onMounted(() => {
 
 /* Section Card Styles */
 .section-card {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   transition: all var(--transition-normal);
@@ -1657,11 +1809,11 @@ onMounted(() => {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--primary-500), var(--secondary-500));
+  background: linear-gradient(90deg, var(--theme-gradient-start), var(--theme-gradient-end));
 }
 
 .section-card:hover {
-  border-color: var(--primary-500);
+  border-color: var(--theme-accent-primary);
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
@@ -1674,25 +1826,29 @@ onMounted(() => {
 }
 
 .section-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--primary-400);
+  width: 56px;
+  height: 56px;
+  color: var(--theme-accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 165, 233, 0.1);
+  background: var(--theme-shadow-color);
   border-radius: var(--radius-lg);
+}
+
+.section-icon .v-icon {
+  font-size: 32px;
 }
 
 .section-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
 .section-description {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.9rem;
 }
@@ -1705,8 +1861,8 @@ onMounted(() => {
 }
 
 .file-upload-card {
-  background: var(--dark-surface-elevated);
-  border: 2px dashed var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px dashed var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
   transition: all var(--transition-normal);
@@ -1714,8 +1870,8 @@ onMounted(() => {
 }
 
 .file-upload-card:hover {
-  border-color: var(--primary-500);
-  background: rgba(14, 165, 233, 0.05);
+  border-color: var(--theme-accent-primary);
+  background: var(--theme-shadow-color);
 }
 
 .upload-area {
@@ -1724,31 +1880,35 @@ onMounted(() => {
 }
 
 .upload-area.has-file {
-  border-color: var(--success-500);
-  background: rgba(34, 197, 94, 0.05);
+  border-color: var(--theme-accent-primary);
+  background: var(--theme-shadow-color);
 }
 
 .upload-icon {
   width: 64px;
   height: 64px;
-  color: var(--primary-400);
+  color: var(--theme-accent-primary);
   margin: 0 auto var(--space-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 165, 233, 0.1);
+  background: var(--theme-shadow-color);
   border-radius: var(--radius-lg);
+}
+
+.upload-icon .v-icon {
+  font-size: 40px;
 }
 
 .upload-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-sm) 0;
 }
 
 .upload-description {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin: 0 0 var(--space-lg) 0;
 }
@@ -1778,13 +1938,13 @@ onMounted(() => {
 .file-info {
   margin-top: var(--space-md);
   padding: var(--space-md);
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-md);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .file-name {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: var(--space-xs);
@@ -1792,7 +1952,7 @@ onMounted(() => {
 }
 
 .file-size {
-  color: var(--dark-text-tertiary);
+  color: var(--text-tertiary);
   font-size: 0.8rem;
 }
 
@@ -1803,7 +1963,7 @@ onMounted(() => {
 
 .form-label {
   display: block;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   margin-bottom: var(--space-sm);
   font-size: 0.9rem;
@@ -1811,25 +1971,25 @@ onMounted(() => {
 
 .modern-select {
   width: 100%;
-  background: var(--dark-surface-elevated);
-  border: 2px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 1rem;
   transition: all var(--transition-normal);
   outline: none;
 }
 
 .modern-select:focus {
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-  background: var(--dark-surface);
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-color);
+  background: var(--surface);
 }
 
 .modern-select option {
-  background: var(--dark-surface);
-  color: var(--dark-text-primary);
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
 /* Action Button Styles */
@@ -1902,41 +2062,21 @@ onMounted(() => {
 }
 
 /* Loading States */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 15, 35, 0.8);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
 
 .loading-content {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
-  border-radius: var(--radius-xl);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: var(--space-2xl);
   text-align: center;
   box-shadow: var(--shadow-2xl);
-}
-
-.loading-spinner-large {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--dark-border);
-  border-top: 4px solid var(--primary-500);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
 }
 
 .loading-text {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -1958,6 +2098,10 @@ onMounted(() => {
     height: 40px;
   }
 
+  .section-icon .v-icon {
+    font-size: 28px;
+  }
+
   .section-title {
     font-size: 1.2rem;
   }
@@ -1965,6 +2109,10 @@ onMounted(() => {
   .upload-icon {
     width: 48px;
     height: 48px;
+  }
+
+  .upload-icon .v-icon {
+    font-size: 36px;
   }
 
   .tab-panel {
@@ -1998,11 +2146,11 @@ onMounted(() => {
 }
 
 .result-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
-  margin-bottom: var(--space-lg);
+  margin-bottom: 40px;
 }
 
 .group-header {
@@ -2013,21 +2161,21 @@ onMounted(() => {
 .group-title {
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-sm) 0;
 }
 
 .group-subtitle {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.9rem;
 }
 
 .chart-container {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .analysis-results {
@@ -2035,11 +2183,11 @@ onMounted(() => {
 }
 
 .analysis-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
-  margin-bottom: var(--space-lg);
+  margin-bottom: 40px;
 }
 
 .recommendations {
@@ -2049,7 +2197,7 @@ onMounted(() => {
 .recommendations-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-lg) 0;
 }
 
@@ -2060,33 +2208,33 @@ onMounted(() => {
 .table-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0 0 var(--space-md) 0;
 }
 
 .modern-table {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .table-header {
   display: grid;
   grid-template-columns: 80px 1fr 120px 120px 120px;
-  background: var(--dark-surface-elevated);
-  border-bottom: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
 }
 
 .table-row {
   display: grid;
   grid-template-columns: 80px 1fr 120px 120px 120px;
-  border-bottom: 1px solid var(--dark-border);
+  border-bottom: 1px solid var(--border);
   transition: background-color var(--transition-fast);
 }
 
 .table-row:hover {
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
 }
 
 .table-row:last-child {
@@ -2095,10 +2243,27 @@ onMounted(() => {
 
 .table-cell {
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   display: flex;
   align-items: center;
+}
+
+.table-cell.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+  position: relative;
+}
+
+.table-cell.sortable:hover {
+  color: var(--primary-400);
+}
+
+.sort-indicator {
+  margin-left: var(--space-xs);
+  color: var(--primary-500);
+  font-weight: bold;
 }
 
 .table-cell.rank {
@@ -2116,11 +2281,11 @@ onMounted(() => {
 }
 
 .prediction-group {
-  background: var(--dark-surface-elevated);
-  border: 1px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
-  margin-bottom: var(--space-lg);
+  margin-bottom: 40px;
 }
 
 .predictions-grid {
@@ -2131,8 +2296,8 @@ onMounted(() => {
 }
 
 .prediction-card {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   transition: all var(--transition-normal);
@@ -2166,18 +2331,22 @@ onMounted(() => {
 .card-icon {
   width: 32px;
   height: 32px;
-  color: var(--primary-400);
+  color: var(--theme-accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 165, 233, 0.1);
+  background: var(--theme-shadow-color);
   border-radius: var(--radius-md);
+}
+
+.card-icon .v-icon {
+  font-size: 20px;
 }
 
 .card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -2193,15 +2362,15 @@ onMounted(() => {
 }
 
 .metric-label {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: var(--space-md);
 }
 
 .confidence-badge {
   display: inline-block;
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--primary-400);
+  background: var(--theme-shadow-color);
+  color: var(--theme-accent-primary);
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-md);
   font-size: 0.8rem;
@@ -2238,7 +2407,7 @@ onMounted(() => {
 
   .table-cell {
     padding: var(--space-xs);
-    border-bottom: 1px solid var(--dark-border);
+    border-bottom: 1px solid var(--border);
   }
 
   .table-cell:last-child {
@@ -2272,7 +2441,7 @@ onMounted(() => {
 }
 
 .filter-label {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: var(--space-sm);
@@ -2285,9 +2454,9 @@ onMounted(() => {
   max-height: 200px;
   overflow-y: auto;
   padding: var(--space-sm);
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .checkbox-item {
@@ -2303,10 +2472,11 @@ onMounted(() => {
   padding: var(--space-xs);
   border-radius: var(--radius-md);
   transition: background-color var(--transition-fast);
+  width: fit-content;
 }
 
 .checkbox-container:hover {
-  background: rgba(14, 165, 233, 0.05);
+  background: var(--theme-shadow-color);
 }
 
 .checkbox-input {
@@ -2316,11 +2486,11 @@ onMounted(() => {
 .checkmark {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--dark-border);
+  border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   position: relative;
   transition: all var(--transition-fast);
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .checkbox-input:checked + .checkmark {
@@ -2341,7 +2511,7 @@ onMounted(() => {
 }
 
 .checkbox-label {
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -2354,24 +2524,24 @@ onMounted(() => {
 
 .range-input {
   flex: 1;
-  background: var(--dark-surface-elevated);
-  border: 2px solid var(--dark-border);
+  background: var(--surface-elevated);
+  border: 2px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
-  color: var(--dark-text-primary);
+  color: var(--text-primary);
   font-size: 1rem;
   transition: all var(--transition-normal);
   outline: none;
 }
 
 .range-input:focus {
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-  background: var(--dark-surface);
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-color);
+  background: var(--surface);
 }
 
 .range-separator {
-  color: var(--dark-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -2380,7 +2550,7 @@ onMounted(() => {
 .roi-np-table-container {
   overflow-x: auto;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border);
 }
 
 .table-wrapper {
@@ -2390,28 +2560,28 @@ onMounted(() => {
 .roi-np-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--dark-surface);
+  background: var(--surface);
 }
 
 .roi-np-table th {
-  background: var(--dark-surface-elevated);
-  color: var(--dark-text-primary);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
   font-weight: 600;
   padding: var(--space-md);
   text-align: left;
-  border-bottom: 1px solid var(--dark-border);
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
 
 .roi-np-table td {
   padding: var(--space-md);
-  color: var(--dark-text-primary);
-  border-bottom: 1px solid var(--dark-border);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
 
 .roi-np-table tr:hover {
-  background: var(--dark-surface-elevated);
+  background: var(--surface-elevated);
 }
 
 .roi-np-table tr:last-child td {
@@ -2463,30 +2633,30 @@ onMounted(() => {
   }
 }
 
-/* Vuetify Autocomplete Styles */
+/* Vuetify Autocomplete & Select Styles */
 .vuetify-autocomplete {
   width: 100%;
 }
 
 .vuetify-autocomplete :deep(.v-field) {
-  background: var(--dark-surface-elevated) !important;
-  border: 2px solid var(--dark-border) !important;
+  background: var(--surface-elevated) !important;
+  border: 2px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field:hover) {
   border-color: var(--primary-500) !important;
-  background: var(--dark-surface) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field--focused) {
-  border-color: var(--primary-500) !important;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1) !important;
+  border-color: var(--theme-accent-primary) !important;
+  box-shadow: 0 0 0 3px var(--theme-shadow-color) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field__input) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
   padding: var(--space-md) !important;
 }
 
@@ -2505,97 +2675,704 @@ onMounted(() => {
 }
 
 .vuetify-autocomplete :deep(.v-list) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-list-item) {
-  color: var(--dark-text-primary) !important;
-  background: var(--dark-surface) !important;
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
 }
 
 .vuetify-autocomplete :deep(.v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+  background: var(--surface-elevated) !important;
 }
 
-.vuetify-autocomplete :deep(.v-list-item--active) {
-  background: var(--primary-500) !important;
-  color: white !important;
+/* Force all list items to have same appearance - override everything */
+.vuetify-autocomplete :deep(.v-list-item),
+.vuetify-autocomplete :deep(.v-list-item--active),
+.vuetify-autocomplete :deep(.v-list-item:hover),
+.vuetify-autocomplete :deep(.v-list-item:focus),
+.vuetify-autocomplete :deep(.v-list-item[aria-selected='true']),
+.vuetify-autocomplete :deep(.v-list-item[data-selected='true']),
+.vuetify-autocomplete :deep(.v-list-item[style*='background']),
+.vuetify-autocomplete :deep(.v-list-item[style*='color']) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
+}
+
+/* Override any inline styles */
+.vuetify-autocomplete :deep(.v-list-item[style]) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
+}
+
+/* Custom no-highlight class for selected items */
+.no-highlight {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
+}
+
+/* Override Vuetify's default selected styling */
+:deep(.no-highlight) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  background-color: var(--surface) !important;
+}
+
+/* Remove text highlight in search results - more specific selectors */
+.vuetify-autocomplete :deep(.v-list-item mark),
+.vuetify-autocomplete :deep(.v-list-item .v-highlight),
+.vuetify-autocomplete :deep(.v-list-item [class*='highlight']),
+.vuetify-autocomplete :deep(.v-list-item span[style*='background']),
+.vuetify-autocomplete :deep(.v-list-item span[style*='color']) {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Override any inline styles for highlight */
+.vuetify-autocomplete :deep(.v-list-item mark[style]),
+.vuetify-autocomplete :deep(.v-list-item span[style]) {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+}
+
+/* Global text highlight removal with maximum specificity */
+:deep(.v-list-item mark),
+:deep(.v-list-item .v-highlight),
+:deep(.v-list-item [class*='highlight']),
+:deep(.v-list-item span[style*='background']),
+:deep(.v-list-item span[style*='color']) {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+}
+
+/* Force override with maximum specificity */
+.vuetify-autocomplete :deep(.v-list-item) mark,
+.vuetify-autocomplete :deep(.v-list-item) span {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+}
+
+/* Try to override with pseudo-elements */
+.vuetify-autocomplete :deep(.v-list-item mark::before),
+.vuetify-autocomplete :deep(.v-list-item mark::after) {
+  display: none !important;
+}
+
+/* Nuclear option - override everything */
+.vuetify-autocomplete :deep(.v-list-item *),
+.vuetify-autocomplete :deep(.v-list-item *::before),
+.vuetify-autocomplete :deep(.v-list-item *::after) {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+}
+
+/* Specific override for any highlighted text */
+.vuetify-autocomplete :deep(.v-list-item) *[style*='background'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+}
+
+/* Use custom CSS variables for highlight styling */
+:root {
+  --v-highlight-text: var(--highlight-text);
+  --v-highlight-bg: var(--highlight-bg);
+}
+
+/* Force override Vuetify's inline styles with maximum specificity */
+.v-application .v-list-item mark,
+.v-application .v-list-item .v-highlight,
+.v-application .v-list-item [class*='highlight'],
+.v-application .v-autocomplete__content .v-list-item mark,
+.v-application .v-autocomplete__content .v-list-item .v-highlight,
+.v-application .v-autocomplete__content .v-list-item [class*='highlight'],
+.v-application .v-select__content .v-list-item mark,
+.v-application .v-select__content .v-list-item .v-highlight,
+.v-application .v-select__content .v-list-item [class*='highlight'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Additional override for Vuetify's inline styles */
+.v-application .v-list-item mark[style],
+.v-application .v-list-item .v-highlight[style],
+.v-application .v-list-item [class*='highlight'][style],
+.v-application .v-autocomplete__content .v-list-item mark[style],
+.v-application .v-autocomplete__content .v-list-item .v-highlight[style],
+.v-application .v-autocomplete__content .v-list-item [class*='highlight'][style] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+}
+
+/* Maximum specificity override for any highlight element */
+html .v-application .v-list-item mark,
+html .v-application .v-list-item .v-highlight,
+html .v-application .v-list-item [class*='highlight'],
+html .v-application .v-autocomplete__content .v-list-item mark,
+html .v-application .v-autocomplete__content .v-list-item .v-highlight,
+html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Target all possible Vuetify highlight selectors */
+.v-list-item .v-highlight,
+.v-list-item .v-highlight--text,
+.v-list-item .v-highlight--background,
+.v-autocomplete__content .v-list-item .v-highlight,
+.v-autocomplete__content .v-list-item .v-highlight--text,
+.v-autocomplete__content .v-list-item .v-highlight--background,
+.v-select__content .v-list-item .v-highlight,
+.v-select__content .v-list-item .v-highlight--text,
+.v-select__content .v-list-item .v-highlight--background {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* Override Vuetify's default highlight styles using CSS variables */
+.v-list-item mark,
+.v-list-item .v-highlight,
+.v-list-item [class*='highlight'] {
+  background: var(--highlight-bg) !important;
+  background-color: var(--highlight-bg) !important;
+  color: var(--highlight-text) !important;
+  font-weight: 600 !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
 }
 
 .vuetify-autocomplete :deep(.v-overlay__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-menu__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.vuetify-autocomplete :deep(.v-select__content),
+.vuetify-autocomplete :deep(.v-date-input__content),
+.vuetify-autocomplete :deep(.v-date-picker__content) {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field__input) {
-  color: var(--dark-text-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 .vuetify-autocomplete :deep(.v-field__input::placeholder) {
-  color: var(--dark-text-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* Additional VAutocomplete dropdown styling */
 .vuetify-autocomplete :deep(.v-autocomplete__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
-.vuetify-autocomplete :deep(.v-autocomplete__content .v-list) {
-  background: var(--dark-surface) !important;
+.vuetify-autocomplete :deep(.v-autocomplete__content .v-list),
+.vuetify-autocomplete :deep(.v-select__content .v-list),
+.vuetify-autocomplete :deep(.v-date-input__content .v-list),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-list) {
+  background: var(--surface) !important;
 }
 
-.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item),
+.vuetify-autocomplete :deep(.v-select__content .v-list-item),
+.vuetify-autocomplete :deep(.v-date-input__content .v-list-item),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-list-item) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
-.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item:hover),
+.vuetify-autocomplete :deep(.v-select__content .v-list-item:hover),
+.vuetify-autocomplete :deep(.v-date-input__content .v-list-item:hover),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-list-item:hover) {
+  background: var(--surface-elevated) !important;
 }
 
-.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item--active) {
-  background: var(--primary-500) !important;
-  color: white !important;
+.vuetify-autocomplete :deep(.v-autocomplete__content .v-list-item--active),
+.vuetify-autocomplete :deep(.v-select__content .v-list-item--active),
+.vuetify-autocomplete :deep(.v-date-input__content .v-list-item--active),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-list-item--active) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
-/* Global VAutocomplete styling */
-:deep(.v-autocomplete__content) {
-  background: var(--dark-surface) !important;
-  border: 1px solid var(--dark-border) !important;
+/* Global VAutocomplete, VSelect, VDateInput & VDatePicker styling */
+:deep(.v-autocomplete__content),
+:deep(.v-select__content),
+:deep(.v-date-input__content),
+:deep(.v-date-picker__content) {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-lg) !important;
 }
 
-:deep(.v-autocomplete__content .v-list) {
-  background: var(--dark-surface) !important;
+:deep(.v-autocomplete__content .v-list),
+:deep(.v-select__content .v-list),
+:deep(.v-date-input__content .v-list),
+:deep(.v-date-picker__content .v-list) {
+  background: var(--surface) !important;
 }
 
-:deep(.v-autocomplete__content .v-list-item) {
-  background: var(--dark-surface) !important;
-  color: var(--dark-text-primary) !important;
+:deep(.v-autocomplete__content .v-list-item),
+:deep(.v-select__content .v-list-item),
+:deep(.v-date-input__content .v-list-item),
+:deep(.v-date-picker__content .v-list-item) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
 }
 
-:deep(.v-autocomplete__content .v-list-item:hover) {
-  background: var(--dark-surface-elevated) !important;
+:deep(.v-autocomplete__content .v-list-item:hover),
+:deep(.v-select__content .v-list-item:hover),
+:deep(.v-date-input__content .v-list-item:hover),
+:deep(.v-date-picker__content .v-list-item:hover) {
+  background: var(--surface-elevated) !important;
 }
 
-:deep(.v-autocomplete__content .v-list-item--active) {
+:deep(.v-autocomplete__content .v-list-item--active),
+:deep(.v-select__content .v-list-item--active),
+:deep(.v-date-input__content .v-list-item--active),
+:deep(.v-date-picker__content .v-list-item--active) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Completely remove all highlight styles */
+:deep(.v-list-item--active),
+:deep(.v-list-item.v-list-item--active),
+:deep(.v-menu__content .v-list-item--active),
+:deep(.v-overlay__content .v-list-item--active),
+:deep(.v-list-item[aria-selected='true']),
+:deep(.v-list-item[data-selected='true']),
+:deep(.v-list-item[aria-selected='true']),
+:deep(.v-list-item[data-selected='true']) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Remove any focus or selection styles */
+:deep(.v-list-item:focus),
+:deep(.v-list-item:focus-visible),
+:deep(.v-list-item[tabindex='0']:focus) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  outline: none !important;
+}
+
+/* VDatePicker Calendar Specific Styles */
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-header) {
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-weekday) {
+  color: var(--text-secondary) !important;
+  background: var(--surface) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day) {
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day:hover) {
+  background: var(--surface-elevated) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day--selected) {
   background: var(--primary-500) !important;
   color: white !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day--today) {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-btn) {
+  color: var(--text-primary) !important;
+}
+
+.vuetify-autocomplete :deep(.v-date-picker__content .v-btn:hover) {
+  background: var(--surface-elevated) !important;
+}
+
+/* VDateInput Calendar Specific Styles - High Specificity */
+.vuetify-autocomplete :deep(.v-date-input__content),
+.vuetify-autocomplete :deep(.v-date-picker__content),
+.vuetify-autocomplete :deep(.v-menu__content),
+.vuetify-autocomplete :deep(.v-overlay__content) {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar),
+.vuetify-autocomplete :deep(.v-date-picker),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar) {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-header),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-header) {
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-weekday),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-weekday) {
+  color: var(--text-secondary) !important;
+  background: var(--surface) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-day),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day) {
+  color: var(--text-primary) !important;
+  background: var(--surface) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-day:hover),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day:hover) {
+  background: var(--surface-elevated) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-day--selected),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day--selected) {
+  background: var(--primary-500) !important;
+  color: white !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar-day--today),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-calendar-day--today) {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar .v-btn),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-btn) {
+  color: var(--text-primary) !important;
+}
+
+.vuetify-autocomplete :deep(.v-calendar .v-btn:hover),
+.vuetify-autocomplete :deep(.v-date-picker__content .v-btn:hover) {
+  background: var(--surface-elevated) !important;
+}
+
+/* Date Input Calendar Icon Styling */
+.vuetify-autocomplete :deep(.v-field__append-inner .mdi-calendar),
+.vuetify-autocomplete :deep(.v-field__prepend-inner .mdi-calendar),
+.vuetify-autocomplete :deep(.v-input__icon .mdi-calendar),
+.vuetify-autocomplete :deep(.v-icon.mdi-calendar),
+.v-date-input :deep(.mdi-calendar),
+.v-date-input :deep(.v-field__append-inner .mdi-calendar),
+.v-date-input :deep(.v-field__prepend-inner .mdi-calendar),
+.v-date-input :deep(.v-input__icon .mdi-calendar),
+.v-date-input :deep(.v-icon.mdi-calendar) {
+  color: var(--primary-400) !important;
+}
+
+/* Chat Tab Styles */
+.chat-tab-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+
+.no-data-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem;
+  text-align: center;
+}
+
+.warning-icon {
+  color: var(--warning) !important;
+  margin-bottom: 1rem;
+}
+
+.no-data-warning h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.no-data-warning p {
+  margin: 0 0 2rem;
+  color: var(--text-secondary);
+  max-width: 500px;
+}
+
+.go-to-analysis-btn {
+  margin-top: 1rem !important;
+}
+
+.chat-interface {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 2rem;
+  scroll-behavior: smooth;
+}
+
+.welcome-message {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.welcome-icon {
+  color: var(--primary-400) !important;
+  margin-bottom: 1rem;
+}
+
+.welcome-message h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.welcome-message p {
+  margin: 0 0 1.5rem;
+}
+
+.example-questions {
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.example-questions li {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: var(--surface);
+  border-radius: 0.25rem;
+  font-style: italic;
+}
+
+.message {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+}
+
+.message-user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assistant-avatar {
+  background: var(--primary-400) !important;
+  color: white !important;
+}
+
+.user-avatar {
+  background: var(--secondary) !important;
+  color: white !important;
+}
+
+.avatar-icon {
+  font-size: 1.25rem;
+}
+
+.message-content {
+  flex: 1;
+  max-width: 70%;
+}
+
+.message-user .message-content {
+  text-align: right;
+}
+
+.message-text {
+  padding: 1rem;
+  border-radius: 1rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.message-assistant .message-text {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.message-user .message-text {
+  background: var(--primary-400);
+  color: white;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.typing-indicator span {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-0.5rem);
+    opacity: 1;
+  }
+}
+
+.input-area {
+  padding: 1rem 2rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--error-light);
+  color: var(--error);
+  border-radius: 0.5rem;
+  border: 1px solid var(--error);
+}
+
+.error-icon {
+  font-size: 1.25rem;
+}
+
+.input-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.input-container:focus-within {
+  border-color: var(--primary-400);
+}
+
+.message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  min-height: 1.5rem;
+  max-height: 8rem;
+  font-family: inherit;
+}
+
+.message-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.send-button {
+  flex-shrink: 0;
 }
 
 /* Responsive Design */
