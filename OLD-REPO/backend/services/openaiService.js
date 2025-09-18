@@ -47,7 +47,9 @@ Context data provided: ${JSON.stringify(data, null, 2)}
 
 Instructions: ${prompt}
 
-Please provide helpful and accurate responses based on the provided data and conversation history.`,
+Always respond in Serbian language unless specifically asked otherwise.
+Format your responses using markdown for better readability (use headers, lists, bold text, etc.).
+Be helpful, accurate, and professional.`,
       };
 
       // Prepare messages array
@@ -109,6 +111,133 @@ Please provide helpful and accurate responses based on the provided data and con
       };
     } catch (error) {
       console.error("OpenAI Service error:", error);
+
+      if (error.error?.type === "insufficient_quota") {
+        throw new Error(
+          "OpenAI API quota exceeded. Please check your billing."
+        );
+      } else if (error.error?.type === "invalid_api_key") {
+        throw new Error(
+          "Invalid OpenAI API key. Please check your configuration."
+        );
+      } else {
+        throw new Error(`OpenAI API error: ${error.message}`);
+      }
+    }
+  }
+
+  // Process streaming chat completion with message history, data, and prompt
+  async processStreamingChatCompletion(messageHistory, data, prompt, onChunk) {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error(
+          "OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable."
+        );
+      }
+
+      // Validate inputs
+      if (!Array.isArray(messageHistory)) {
+        throw new Error("messageHistory must be an array");
+      }
+
+      if (!prompt || typeof prompt !== "string") {
+        throw new Error("prompt must be a non-empty string");
+      }
+
+      // Prepare the system message with context data
+      let systemMessage = {
+        role: "system",
+        content: `You are an AI assistant helping with data analysis and calculations. 
+        
+Context data provided: ${JSON.stringify(data, null, 2)}
+
+Instructions: ${prompt}
+
+Always respond in Serbian language unless specifically asked otherwise.
+Format your responses using markdown for better readability (use headers, lists, bold text, etc.).
+Be helpful, accurate, and professional.`,
+      };
+
+      // Prepare messages array
+      let messages = [systemMessage];
+
+      // Add message history (ensure proper format)
+      const formattedHistory = messageHistory.map((msg) => {
+        if (typeof msg === "object" && msg.role && msg.content) {
+          return {
+            role: msg.role,
+            content: msg.content,
+          };
+        } else if (typeof msg === "string") {
+          return {
+            role: "user",
+            content: msg,
+          };
+        } else {
+          throw new Error("Invalid message format in history");
+        }
+      });
+
+      messages = messages.concat(formattedHistory);
+
+      // Ensure we don't exceed token limits (basic check)
+      if (messages.length > 50) {
+        console.warn(
+          "Message history is quite long, consider truncating for better performance"
+        );
+      }
+
+      console.log("\n=== OpenAI Streaming Chat Request ===");
+      console.log("Number of messages:", messages.length);
+      console.log("Data context provided:", !!data);
+      console.log(
+        "Custom prompt:",
+        prompt.substring(0, 100) + (prompt.length > 100 ? "..." : "")
+      );
+      console.log("===================================\n");
+
+      // Make the streaming API call
+      const stream = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: messages,
+        stream: true,
+      });
+
+      let fullContent = "";
+      let usage = null;
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          fullContent += content;
+          // Call the callback with the chunk
+          if (onChunk) {
+            onChunk(content);
+          }
+        }
+
+        // Capture usage information if available
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
+      }
+
+      console.log("\n=== OpenAI Streaming Response Complete ===");
+      console.log("Total response length:", fullContent.length);
+      console.log("Tokens used:", usage?.total_tokens || "unknown");
+      console.log("==========================================\n");
+
+      return {
+        success: true,
+        response: {
+          role: "assistant",
+          content: fullContent,
+        },
+        usage: usage,
+        model: this.model,
+      };
+    } catch (error) {
+      console.error("OpenAI Streaming Service error:", error);
 
       if (error.error?.type === "insufficient_quota") {
         throw new Error(
