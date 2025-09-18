@@ -56,9 +56,9 @@ const tabs = [
 const iconMap: Record<string, string> = {
   SettingsIcon: 'mdi-cog',
   ChartIcon: 'mdi-chart-line',
-  TrophyIcon: 'mdi-trophy',
+  TrophyIcon: 'mdi-trophy-outline',
   TrendingIcon: 'mdi-trending-up',
-  ChatIcon: 'mdi-robot',
+  ChatIcon: 'mdi-robot-outline',
 }
 
 const file_one = ref<File | null>(null)
@@ -215,6 +215,17 @@ const simulateCalculate = async () => {
     // Store data in chat store for AI assistance
     chatStore.setCalculateData(response.data.data)
 
+    // Save response to localStorage as mock data
+    const saveResult = chatStore.saveMockData(
+      response.data.data,
+      `Calculate response from ${new Date().toLocaleString('sr-RS')}`,
+    )
+    if (saveResult.success) {
+      console.log('✅ Response saved as mock data to localStorage')
+    } else {
+      console.warn('⚠️ Failed to save mock data:', saveResult.error)
+    }
+
     loading_data.value = false
     nextTick(() => {
       setupDataRender()
@@ -227,6 +238,26 @@ const simulateCalculate = async () => {
       auth.logout()
       console.log('Token expired, please try again')
     }
+  }
+}
+
+const useMockData = async () => {
+  try {
+    const result = chatStore.loadMockData()
+    if (result.success && result.data) {
+      result_data.value = result.data
+      // Switch to Results tab to show loaded data
+      tab.value = 2
+      nextTick(() => {
+        setupDataRender()
+      })
+      console.log('✅ Mock data loaded successfully')
+    } else {
+      alert(result.error || 'Failed to load mock data')
+    }
+  } catch (error) {
+    console.error('Error loading mock data:', error)
+    alert('Error loading mock data')
   }
 }
 
@@ -245,9 +276,19 @@ const goToChat = () => {
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      messagesContainer.value.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: 'smooth',
+      })
     }
   })
+}
+
+// Force scroll to bottom (for streaming updates)
+const forceScrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
 }
 
 // Watch for new messages and scroll
@@ -258,12 +299,26 @@ watch(
   },
 )
 
-// Watch for loading state changes
+// Watch for content changes in the last message (for streaming)
 watch(
-  () => chatStore.isLoading,
-  (isLoading) => {
-    if (!isLoading) {
-      scrollToBottom()
+  () => chatStore.lastMessage?.content,
+  () => {
+    if (chatStore.lastMessage?.isStreaming) {
+      forceScrollToBottom()
+    }
+  },
+  { deep: true },
+)
+
+// Watch for streaming completion
+watch(
+  () => chatStore.lastMessage?.isStreaming,
+  (isStreaming, wasStreaming) => {
+    // When streaming stops, do a final smooth scroll
+    if (wasStreaming && !isStreaming) {
+      nextTick(() => {
+        scrollToBottom()
+      })
     }
   },
 )
@@ -296,7 +351,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
 // Send message
 const sendMessage = async () => {
-  if (!currentMessage.value.trim() || chatStore.isLoading) return
+  if (!currentMessage.value.trim()) return
 
   const message = currentMessage.value.trim()
   currentMessage.value = ''
@@ -306,6 +361,25 @@ const sendMessage = async () => {
   if (!result.success && result.error) {
     // Error is already handled in the store and displayed in the UI
     console.error('Failed to send message:', result.error)
+  }
+}
+
+// Load chat mock data
+const loadChatMockData = async () => {
+  try {
+    const result = chatStore.loadChatMockData()
+    if (result.success) {
+      console.log('✅ Chat mock data loaded successfully')
+      // Scroll to bottom to show loaded messages
+      nextTick(() => {
+        scrollToBottom()
+      })
+    } else {
+      alert(result.error || 'Failed to load chat mock data')
+    }
+  } catch (error) {
+    console.error('Error loading chat mock data:', error)
+    alert('Error loading chat mock data')
   }
 }
 
@@ -1074,6 +1148,15 @@ onMounted(() => {
                 <div v-if="loading_data" class="loading-spinner"></div>
                 <span v-else>Calculate</span>
               </button>
+
+              <button
+                v-if="chatStore.hasMockData"
+                class="action-button secondary"
+                @click="useMockData"
+                :disabled="loading_data"
+              >
+                📊 Use Mock Data
+              </button>
             </div>
           </div>
         </div>
@@ -1314,68 +1397,49 @@ onMounted(() => {
       </v-tabs-window-item>
 
       <!-- Chat Tab -->
-      <v-tabs-window-item :value="5" class="tab-panel animate-fade-in">
-        <div class="chat-tab-container">
+      <v-tabs-window-item :value="5" class="tab-panel tab-panel-chat animate-fade-in">
+        <div class="panel-container">
           <!-- No Data Warning -->
-          <div v-if="!chatStore.hasCalculateData" class="no-data-warning">
-            <v-icon icon="mdi-alert-circle" size="64" class="warning-icon" />
-            <h3>Nema dostupnih podataka za analizu</h3>
-            <p>
-              Da biste mogli da postavljate pitanja AI asistentu, prvo morate da pokrenete analizu.
-            </p>
-            <v-btn color="primary" size="large" @click="tab = 1" class="go-to-analysis-btn">
-              <v-icon icon="mdi-chart-line" class="mr-2" />
-              Idi na analizu
-            </v-btn>
+          <div v-if="!chatStore.hasCalculateData" class="section-card mt-8">
+            <div class="section-header">
+              <div class="section-icon">
+                <v-icon icon="mdi-robot-outline" />
+              </div>
+              <div>
+                <h2 class="section-title">AI Chat Assistant</h2>
+                <p class="section-description">No analysis data available for AI assistance</p>
+              </div>
+            </div>
           </div>
 
           <!-- Chat Interface -->
           <div v-else class="chat-interface">
             <!-- Messages Container -->
             <div ref="messagesContainer" class="messages-container">
-              <div v-if="chatStore.messageCount === 0" class="welcome-message">
-                <v-icon icon="mdi-robot" size="48" class="welcome-icon" />
-                <h3>Dobrodošli u AI asistent!</h3>
-                <p>Postavite pitanje o analiziranim podacima. Evo nekoliko primera:</p>
-                <ul class="example-questions">
-                  <li>"Kog operatera mi preporučuješ na srpskom tržištu?"</li>
-                  <li>"Koje su najbolje performanse u poslednjoj analizi?"</li>
-                  <li>"Objasni mi predikcije za GGR"</li>
-                  <li>"Koje igre imaju najbolji ROI?"</li>
-                </ul>
-              </div>
-
               <!-- Messages -->
               <div
                 v-for="message in chatStore.messages"
                 :key="message.id"
                 :class="['message', `message-${message.role}`]"
               >
-                <div class="message-avatar">
+                <v-avatar
+                  :color="message.role === 'assistant' ? 'primary' : 'secondary'"
+                  size="40"
+                  class="message-avatar"
+                >
                   <v-icon
-                    :icon="message.role === 'assistant' ? 'mdi-robot' : 'mdi-account'"
-                    class="avatar-icon"
-                    :class="message.role === 'assistant' ? 'assistant-avatar' : 'user-avatar'"
+                    :icon="message.role === 'assistant' ? 'mdi-robot-outline' : 'mdi-account'"
+                    color="white"
                   />
-                </div>
+                </v-avatar>
                 <div class="message-content">
                   <div class="message-text" v-html="formatMessage(message.content)"></div>
-                  <div class="message-time">
-                    {{ formatTime(message.timestamp) }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Loading Indicator -->
-              <div v-if="chatStore.isLoading" class="message message-assistant">
-                <div class="message-avatar">
-                  <v-icon icon="mdi-robot" class="avatar-icon assistant-avatar" />
-                </div>
-                <div class="message-content">
-                  <div class="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                  <!-- Typing indicator for streaming messages -->
+                  <div
+                    v-if="message.isStreaming && message.role === 'assistant'"
+                    class="typing-cursor"
+                  >
+                    <span class="cursor-blink">|</span>
                   </div>
                 </div>
               </div>
@@ -1389,21 +1453,46 @@ onMounted(() => {
               </div>
 
               <div class="input-container">
-                <textarea
+                <v-textarea
                   ref="messageInput"
                   v-model="currentMessage"
-                  :disabled="chatStore.isLoading"
-                  placeholder="Postavite pitanje o analiziranim podacima..."
+                  placeholder="Ask a question about your analysis data..."
                   class="message-input"
                   @keydown="handleKeyDown"
                   rows="1"
-                ></textarea>
+                  auto-grow
+                  variant="outlined"
+                  hide-details
+                  density="compact"
+                  rounded="lg"
+                  color="primary"
+                  bg-color="transparent"
+                  flat
+                ></v-textarea>
+                <v-btn
+                  @click="loadChatMockData"
+                  :disabled="!chatStore.hasChatMockData"
+                  icon="mdi-database-import"
+                  class="mock-data-button"
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                  rounded="lg"
+                  :title="
+                    chatStore.hasChatMockData
+                      ? `Load chat mock data (${chatStore.chatMockDataInfo?.messageCount || 0} messages)`
+                      : 'No chat mock data available'
+                  "
+                />
                 <v-btn
                   @click="sendMessage"
-                  :disabled="!currentMessage.trim() || chatStore.isLoading"
+                  :disabled="!currentMessage.trim()"
                   icon="mdi-send"
                   class="send-button"
                   size="small"
+                  color="primary"
+                  variant="flat"
+                  rounded="lg"
                 />
               </div>
             </div>
@@ -1563,7 +1652,6 @@ onMounted(() => {
 .theme-toggle-button:hover {
   background: var(--surface);
   border-color: var(--primary-500);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -1673,7 +1761,7 @@ onMounted(() => {
 .tab-content {
   background: var(--bg-primary);
   min-height: calc(100vh - 160px);
-  padding-top: 200px; /* Space for fixed header + tabs */
+  padding-top: 170px; /* Space for fixed header + tabs */
 }
 
 .tab-content :deep(.v-tabs-window) {
@@ -1776,11 +1864,19 @@ onMounted(() => {
 .tab-content {
   min-height: calc(100vh - 160px);
   background: var(--dark-bg-primary);
-  padding-top: 200px; /* Space for fixed header + tabs */
+  padding-top: 170px; /* Space for fixed header + tabs */
 }
 
 .tab-panel {
   padding: var(--space-xl);
+}
+
+.tab-panel-chat {
+  padding: 0;
+}
+
+.tab-panel-chat .input-area {
+  padding-bottom: 0;
 }
 
 .panel-container {
@@ -1815,7 +1911,6 @@ onMounted(() => {
 .section-card:hover {
   border-color: var(--theme-accent-primary);
   box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
 }
 
 .section-header {
@@ -1930,7 +2025,6 @@ onMounted(() => {
 }
 
 .upload-button:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   background: linear-gradient(135deg, var(--primary-400), var(--primary-500));
 }
@@ -2028,7 +2122,6 @@ onMounted(() => {
 }
 
 .action-button:hover:not(:disabled) {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   background: linear-gradient(135deg, var(--primary-400), var(--primary-500));
 }
@@ -2138,7 +2231,21 @@ onMounted(() => {
 .action-section {
   display: flex;
   justify-content: center;
+  gap: var(--space-md);
   margin: var(--space-xl) 0;
+  flex-wrap: wrap;
+}
+
+.action-button.secondary {
+  background: var(--color-surface-variant);
+  color: var(--color-on-surface-variant);
+  border: 1px solid var(--color-outline);
+}
+
+.action-button.secondary:hover:not(:disabled) {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  border-color: var(--color-primary);
 }
 
 .results-container {
@@ -2318,7 +2425,6 @@ onMounted(() => {
 .prediction-card:hover {
   border-color: var(--primary-500);
   box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
 }
 
 .card-header {
@@ -3122,50 +3228,12 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 }
 
 /* Chat Tab Styles */
-.chat-tab-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 500px;
-}
-
-.no-data-warning {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 2rem;
-  text-align: center;
-}
-
-.warning-icon {
-  color: var(--warning) !important;
-  margin-bottom: 1rem;
-}
-
-.no-data-warning h3 {
-  margin: 0 0 1rem;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.no-data-warning p {
-  margin: 0 0 2rem;
-  color: var(--text-secondary);
-  max-width: 500px;
-}
-
-.go-to-analysis-btn {
-  margin-top: 1rem !important;
-}
 
 .chat-interface {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  height: calc(100vh - 200px);
+  min-height: 500px;
 }
 
 .messages-container {
@@ -3173,42 +3241,6 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
   overflow-y: auto;
   padding: 1rem 2rem;
   scroll-behavior: smooth;
-}
-
-.welcome-message {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary);
-}
-
-.welcome-icon {
-  color: var(--primary-400) !important;
-  margin-bottom: 1rem;
-}
-
-.welcome-message h3 {
-  margin: 0 0 1rem;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.welcome-message p {
-  margin: 0 0 1.5rem;
-}
-
-.example-questions {
-  text-align: left;
-  max-width: 400px;
-  margin: 0 auto;
-}
-
-.example-questions li {
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  background: var(--surface);
-  border-radius: 0.25rem;
-  font-style: italic;
 }
 
 .message {
@@ -3224,26 +3256,6 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 
 .message-avatar {
   flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.assistant-avatar {
-  background: var(--primary-400) !important;
-  color: white !important;
-}
-
-.user-avatar {
-  background: var(--secondary) !important;
-  color: white !important;
-}
-
-.avatar-icon {
-  font-size: 1.25rem;
 }
 
 .message-content {
@@ -3253,6 +3265,8 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 
 .message-user .message-content {
   text-align: right;
+  max-width: fit-content;
+  margin-left: auto;
 }
 
 .message-text {
@@ -3263,13 +3277,107 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 }
 
 .message-assistant .message-text {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: transparent;
 }
 
 .message-user .message-text {
   background: var(--primary-400);
   color: white;
+}
+
+/* Markdown styling for messages */
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin: 0.5rem 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-text :deep(h1) {
+  font-size: 1.5rem;
+}
+.message-text :deep(h2) {
+  font-size: 1.3rem;
+}
+.message-text :deep(h3) {
+  font-size: 1.1rem;
+}
+
+.message-text :deep(p) {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-text :deep(li) {
+  margin: 0.25rem 0;
+}
+
+.message-text :deep(strong),
+.message-text :deep(b) {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-text :deep(em),
+.message-text :deep(i) {
+  font-style: italic;
+}
+
+.message-text :deep(code) {
+  background: var(--border);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.message-text :deep(pre) {
+  background: var(--border);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.message-text :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+
+.message-text :deep(blockquote) {
+  border-left: 3px solid var(--primary-400);
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.message-text :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.message-text :deep(th),
+.message-text :deep(td) {
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.message-text :deep(th) {
+  background: var(--border);
+  font-weight: 600;
 }
 
 .message-time {
@@ -3316,6 +3424,29 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
   }
 }
 
+/* Typing cursor animation */
+.typing-cursor {
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.cursor-blink {
+  animation: cursor-blink 1s infinite;
+  font-weight: bold;
+  color: var(--primary-400);
+}
+
+@keyframes cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
 .input-area {
   padding: 1rem 2rem 2rem;
   border-top: 1px solid var(--border);
@@ -3341,23 +3472,28 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 .input-container {
   display: flex;
   gap: 0.75rem;
-  align-items: flex-end;
+  align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 0.75rem;
-  transition: border-color 0.2s;
+  padding: 1rem;
+  transition: all 0.3s ease;
 }
 
 .input-container:focus-within {
   border-color: var(--primary-400);
+  transform: translateY(-1px);
+}
+
+.input-container:hover {
+  border-color: var(--primary-300);
 }
 
 .message-input {
   flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
   color: var(--text-primary);
   font-size: 1rem;
   line-height: 1.5;
@@ -3367,11 +3503,28 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
   font-family: inherit;
 }
 
+.message-input :deep(.v-field__input) {
+  min-height: 1.5rem !important;
+  padding: 0 !important;
+}
+
+.message-input :deep(.v-field__outline) {
+  display: none !important;
+}
+
+.message-input :deep(.v-field__field) {
+  padding: 0 !important;
+}
+
 .message-input::placeholder {
   color: var(--text-secondary);
 }
 
 .send-button {
+  flex-shrink: 0;
+}
+
+.mock-data-button {
   flex-shrink: 0;
 }
 

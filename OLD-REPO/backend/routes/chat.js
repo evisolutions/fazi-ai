@@ -137,7 +137,7 @@ router.post("/chat-old", authenticateToken, async (req, res) => {
   }
 });
 
-// NEW: Chat endpoint for AI assistant with calculate data context
+// NEW: Chat endpoint for AI assistant with calculate data context (EventStream)
 router.post("/chat", authenticateToken, async (req, res) => {
   try {
     const { message, calculateData } = req.body;
@@ -157,14 +157,14 @@ router.post("/chat", authenticateToken, async (req, res) => {
     }
 
     // Log the chat request details
-    console.log("\n=== New Chat API Request ===");
+    console.log("\n=== New Chat API Request (EventStream) ===");
     console.log(
       "Message:",
       message.substring(0, 100) + (message.length > 100 ? "..." : "")
     );
     console.log("Calculate Data Keys:", Object.keys(calculateData));
     console.log("User:", req.user?.username || "Unknown");
-    console.log("===========================\n");
+    console.log("==========================================\n");
 
     // Check if OpenAI is configured
     if (!openaiService.isConfigured()) {
@@ -174,6 +174,13 @@ router.post("/chat", authenticateToken, async (req, res) => {
         configured: false,
       });
     }
+
+    // Set EventStream headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
 
     // Create system prompt with calculate data context (optimized for token usage)
     const systemPrompt = `You are an AI assistant specialized in analyzing gambling/gaming data and providing insights. 
@@ -201,56 +208,74 @@ Be helpful, accurate, and professional.`;
     // Optimize data based on user question to reduce token usage
     const optimizedData = optimizeDataForQuestion(calculateData, message);
 
-    // Process the chat completion
-    const result = await openaiService.processChatCompletion(
+    // Send initial metadata
+    const metadata = {
+      model: "gpt-4o-mini",
+      processed_at: new Date().toISOString(),
+      user: req.user?.username,
+      message_history_length: 1,
+      data_provided: !!optimizedData,
+      prompt_length: systemPrompt.length,
+    };
+
+    res.write(
+      `data: ${JSON.stringify({ type: "metadata", data: metadata })}\n\n`
+    );
+
+    // Process the streaming chat completion
+    const result = await openaiService.processStreamingChatCompletion(
       [{ role: "user", content: message }], // Simple message history for now
       optimizedData,
-      systemPrompt
+      systemPrompt,
+      (chunk) => {
+        // Send each chunk as an event
+        res.write(
+          `data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`
+        );
+      }
     );
 
     if (!result.success) {
-      return res.status(500).json({
-        error: "Failed to process chat completion",
-        details: result.error,
-      });
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          error: "Failed to process chat completion",
+          details: result.error,
+        })}\n\n`
+      );
+      res.end();
+      return;
     }
 
-    // Prepare the response
-    const response = {
-      message: "Chat completion successful",
-      response: {
-        role: result.response.role,
-        content: result.response.content,
-      },
-      metadata: {
-        model: result.model,
-        usage: result.usage,
-        processed_at: new Date().toISOString(),
-        user: req.user?.username,
-      },
+    // Send final usage information
+    const finalData = {
+      type: "complete",
+      usage: result.usage,
+      total_length: result.response.content.length,
     };
 
-    res.json(response);
+    res.write(`data: ${JSON.stringify(finalData)}\n\n`);
+    res.end();
   } catch (error) {
     console.error("New Chat API error:", error);
 
-    // Handle specific OpenAI errors
-    if (error.message.includes("quota")) {
-      return res.status(429).json({
-        error: "OpenAI API quota exceeded",
-        details: "Please check your OpenAI billing and usage limits.",
-      });
-    } else if (error.message.includes("API key")) {
-      return res.status(401).json({
-        error: "Invalid OpenAI API configuration",
-        details: "Please check your OpenAI API key.",
-      });
-    }
-
-    res.status(500).json({
+    // Send error as EventStream
+    const errorData = {
+      type: "error",
       error: "Internal server error",
       details: error.message,
-    });
+    };
+
+    if (error.message.includes("quota")) {
+      errorData.error = "OpenAI API quota exceeded";
+      errorData.details = "Please check your OpenAI billing and usage limits.";
+    } else if (error.message.includes("API key")) {
+      errorData.error = "Invalid OpenAI API configuration";
+      errorData.details = "Please check your OpenAI API key.";
+    }
+
+    res.write(`data: ${JSON.stringify(errorData)}\n\n`);
+    res.end();
   }
 });
 
