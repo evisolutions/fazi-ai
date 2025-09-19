@@ -399,6 +399,12 @@ watch(currentMessage, () => {
 })
 
 function excelSerialToMonthYear(serial: number, use1904System = false) {
+  // Validate input
+  if (serial === null || serial === undefined || isNaN(serial) || !isFinite(serial)) {
+    console.warn('Invalid serial number provided:', serial)
+    return 'Invalid Date'
+  }
+
   // Excel's base date
   const excel1900Epoch = new Date(Date.UTC(1899, 11, 30)) // Dec 30, 1899
   const excel1904Epoch = new Date(Date.UTC(1904, 0, 1)) // Jan 1, 1904
@@ -409,21 +415,89 @@ function excelSerialToMonthYear(serial: number, use1904System = false) {
   // Add days to base date
   const date = new Date(baseDate.getTime() + serial * 86400000)
 
+  // Check if the resulting date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date created from serial:', serial)
+    return 'Invalid Date'
+  }
+
+  // Additional validation: check if date is within reasonable range
+  const currentYear = new Date().getFullYear()
+  const dateYear = date.getFullYear()
+  if (dateYear < 1900 || dateYear > currentYear + 10) {
+    console.warn('Date out of reasonable range:', date, 'from serial:', serial)
+    return 'Invalid Date'
+  }
+
   // Format: "Month YYYY"
   const options = { year: 'numeric', month: 'long' } as any
   return date.toLocaleDateString('en-US', options)
 }
 
+// Utility function to analyze date data and provide insights
+function analyzeDateData(group: any) {
+  const dates_start = group.data.map((item: any) => item[15])
+  const analysis = {
+    totalDates: dates_start.length,
+    validDates: 0,
+    invalidDates: 0,
+    minSerial: Math.min(...dates_start),
+    maxSerial: Math.max(...dates_start),
+    uniqueValues: [...new Set(dates_start)].length,
+    sampleValues: dates_start.slice(0, 5),
+  }
+
+  dates_start.forEach((serial: any) => {
+    const converted = excelSerialToMonthYear(serial)
+    if (converted === 'Invalid Date') {
+      analysis.invalidDates++
+    } else {
+      analysis.validDates++
+    }
+  })
+
+  console.log('Date Analysis for Group', group.id, ':', analysis)
+  return analysis
+}
+
 const formatDataForChart = (group: any) => {
   let group_copy = JSON.parse(JSON.stringify(group))
+
+  // Analyze date data first
+  analyzeDateData(group_copy)
+
   let dates_start = group_copy.data.map((item: any) => item[15]).sort((a: any, b: any) => a - b)
 
+  // Debug: Log the raw date values
+  console.log('Raw date values for group', group.id, ':', dates_start.slice(0, 10)) // Show first 10 values
+
   let labels_map = dates_start.map((item: any) => excelSerialToMonthYear(item))
-  let labels_set = [...new Set(labels_map)]
+
+  // Debug: Log the converted labels
+  console.log('Converted labels for group', group.id, ':', labels_map.slice(0, 10)) // Show first 10 labels
+
+  // Filter out invalid dates and group them separately
+  let valid_labels = labels_map.filter((label: any) => label !== 'Invalid Date')
+  let invalid_count = labels_map.filter((label: any) => label === 'Invalid Date').length
+
+  // Debug: Log invalid date count
+  if (invalid_count > 0) {
+    console.warn(
+      `Group ${group.id} has ${invalid_count} invalid dates out of ${labels_map.length} total dates`,
+    )
+  }
+
+  let labels_set = [...new Set(valid_labels)]
+
+  // Add "Invalid Date" category if there are any invalid dates
+  if (invalid_count > 0) {
+    labels_set.push('Invalid Date')
+  }
 
   let data = labels_set.map((item: any) => ({
     label: item,
-    count: labels_map.filter((xd: any) => xd === item).length,
+    count:
+      item === 'Invalid Date' ? invalid_count : labels_map.filter((xd: any) => xd === item).length,
   }))
 
   return { data, labels_set, canvas_id: `test-${group.id}` }
@@ -715,10 +789,10 @@ const loadDefaultFiles = async () => {
   }
 }
 
-// Load default files when component mounts
-onMounted(() => {
-  loadDefaultFiles()
-})
+// Load default files when component mounts - REMOVED
+// onMounted(() => {
+//   loadDefaultFiles()
+// })
 </script>
 
 <template>
@@ -850,6 +924,17 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Default Files Button -->
+            <div class="default-files-section">
+              <button class="default-files-button" @click="loadDefaultFiles">
+                <v-icon icon="mdi-file-document-multiple" class="button-icon" />
+                Use Default Files
+              </button>
+              <p class="default-files-description">
+                Load default training_data.xlsx and all_games.xlsx files
+              </p>
             </div>
           </div>
 
@@ -1342,12 +1427,30 @@ onMounted(() => {
                       <h4 class="card-title">Promotion Recommendation</h4>
                     </div>
                     <div v-if="group['Promotion Recommendation']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['Promotion Recommendation'].recommended_amount) }}
-                      </div>
-                      <div class="metric-label">Recommended Amount</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['Promotion Recommendation'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['Promotion Recommendation'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['Promotion Recommendation'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['Promotion Recommendation'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Recommended Amount</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['Promotion Recommendation'].confidence) }}%
+                          confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1361,12 +1464,29 @@ onMounted(() => {
                       <h4 class="card-title">GGR Prediction</h4>
                     </div>
                     <div v-if="group['GGR Prediction']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['GGR Prediction'].predicted_ggr) }}
-                      </div>
-                      <div class="metric-label">Predicted GGR</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['GGR Prediction'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['GGR Prediction'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['GGR Prediction'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Predicted GGR</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1380,12 +1500,29 @@ onMounted(() => {
                       <h4 class="card-title">NP Amount Prediction</h4>
                     </div>
                     <div v-if="group['NP Prediction']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['NP Prediction'].predicted_np_amount) }}
-                      </div>
-                      <div class="metric-label">Predicted NP Amount</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['NP Prediction'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['NP Prediction'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['NP Prediction'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Predicted NP Amount</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2050,6 +2187,48 @@ onMounted(() => {
   font-size: 0.8rem;
 }
 
+/* Default Files Section */
+.default-files-section {
+  margin-top: var(--space-lg);
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.default-files-button {
+  background: linear-gradient(135deg, var(--secondary-500), var(--secondary-600));
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-xl);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.default-files-button:hover {
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, var(--secondary-400), var(--secondary-500));
+  transform: translateY(-1px);
+}
+
+.default-files-button .button-icon {
+  font-size: 1.2rem;
+}
+
+.default-files-description {
+  margin-top: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
 /* Modern Form Styles */
 .modern-form-group {
   margin-bottom: var(--space-xl);
@@ -2483,6 +2662,90 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* Range Display Styles */
+.range-container {
+  text-align: center;
+}
+
+.range-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+  position: relative;
+}
+
+.range-min,
+.range-max {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.range-line-visual {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin: 0 var(--space-md);
+  position: relative;
+  height: 20px;
+}
+
+.range-line-segment {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  position: relative;
+}
+
+.range-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+}
+
+.range-point-min {
+  background: var(--warning-400);
+  border: 2px solid var(--warning-500);
+}
+
+.range-point-max {
+  background: var(--warning-400);
+  border: 2px solid var(--warning-500);
+}
+
+.range-point-most-likely {
+  background: var(--primary-500);
+  border: 2px solid var(--primary-600);
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.range-most-likely {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-400);
+  margin-bottom: var(--space-sm);
+  position: relative;
+}
+
+.range-most-likely::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--primary-400);
+}
+
 /* Responsive Design for New Components */
 @media (max-width: 768px) {
   .predictions-grid {
@@ -2501,6 +2764,20 @@ onMounted(() => {
 
   .metric-value {
     font-size: 1.5rem;
+  }
+
+  .range-most-likely {
+    font-size: 1.5rem;
+  }
+
+  .range-min,
+  .range-max {
+    font-size: 0.7rem;
+    min-width: 50px;
+  }
+
+  .range-line-visual {
+    margin: 0 var(--space-sm);
   }
 }
 
