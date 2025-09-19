@@ -10,6 +10,11 @@ RUN npm ci || npm i --no-audit --no-fund
 
 # Copy source and build
 COPY . .
+
+# Accept build argument for API URL
+ARG VITE_APP_API_BASE_URL
+ENV VITE_APP_API_BASE_URL=$VITE_APP_API_BASE_URL
+
 RUN npm run build
 
 # Production stage with nginx

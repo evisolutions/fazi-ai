@@ -41,6 +41,8 @@ fi
 echo "Building Docker images..."
 if [ -f "OLD-REPO/backend/docker-compose.yml" ]; then
   cd OLD-REPO/backend
+  # Set environment variable for staging build
+  export VITE_APP_API_BASE_URL=https://fazi.api.evi.rs
   docker-compose build --no-cache || { echo "Docker build failed"; exit 1; }
   docker-compose up -d || { echo "Docker Compose up failed"; exit 1; }
   cd ../..
