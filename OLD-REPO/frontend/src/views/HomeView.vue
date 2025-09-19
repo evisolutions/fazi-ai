@@ -1342,12 +1342,30 @@ onMounted(() => {
                       <h4 class="card-title">Promotion Recommendation</h4>
                     </div>
                     <div v-if="group['Promotion Recommendation']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['Promotion Recommendation'].recommended_amount) }}
-                      </div>
-                      <div class="metric-label">Recommended Amount</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['Promotion Recommendation'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['Promotion Recommendation'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['Promotion Recommendation'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['Promotion Recommendation'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Recommended Amount</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['Promotion Recommendation'].confidence) }}%
+                          confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1361,12 +1379,29 @@ onMounted(() => {
                       <h4 class="card-title">GGR Prediction</h4>
                     </div>
                     <div v-if="group['GGR Prediction']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['GGR Prediction'].predicted_ggr) }}
-                      </div>
-                      <div class="metric-label">Predicted GGR</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['GGR Prediction'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['GGR Prediction'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['GGR Prediction'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Predicted GGR</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['GGR Prediction'].confidence) }}% confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1380,12 +1415,29 @@ onMounted(() => {
                       <h4 class="card-title">NP Amount Prediction</h4>
                     </div>
                     <div v-if="group['NP Prediction']" class="card-content">
-                      <div class="metric-value">
-                        {{ formatNumber(group['NP Prediction'].predicted_np_amount) }}
-                      </div>
-                      <div class="metric-label">Predicted NP Amount</div>
-                      <div class="confidence-badge">
-                        {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                      <div class="range-container">
+                        <div class="range-most-likely">
+                          {{ formatNumber(group['NP Prediction'].range.most_likely) }}
+                        </div>
+                        <div class="range-line">
+                          <div class="range-min">
+                            {{ formatNumber(group['NP Prediction'].range.min) }}
+                          </div>
+                          <div class="range-line-visual">
+                            <div class="range-point range-point-min"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-most-likely"></div>
+                            <div class="range-line-segment"></div>
+                            <div class="range-point range-point-max"></div>
+                          </div>
+                          <div class="range-max">
+                            {{ formatNumber(group['NP Prediction'].range.max) }}
+                          </div>
+                        </div>
+                        <div class="metric-label">Predicted NP Amount</div>
+                        <div class="confidence-badge">
+                          {{ formatNumber(group['NP Prediction'].confidence) }}% confidence
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2483,6 +2535,90 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* Range Display Styles */
+.range-container {
+  text-align: center;
+}
+
+.range-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+  position: relative;
+}
+
+.range-min,
+.range-max {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.range-line-visual {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin: 0 var(--space-md);
+  position: relative;
+  height: 20px;
+}
+
+.range-line-segment {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  position: relative;
+}
+
+.range-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+}
+
+.range-point-min {
+  background: var(--warning-400);
+  border: 2px solid var(--warning-500);
+}
+
+.range-point-max {
+  background: var(--warning-400);
+  border: 2px solid var(--warning-500);
+}
+
+.range-point-most-likely {
+  background: var(--primary-500);
+  border: 2px solid var(--primary-600);
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.range-most-likely {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-400);
+  margin-bottom: var(--space-sm);
+  position: relative;
+}
+
+.range-most-likely::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--primary-400);
+}
+
 /* Responsive Design for New Components */
 @media (max-width: 768px) {
   .predictions-grid {
@@ -2501,6 +2637,20 @@ onMounted(() => {
 
   .metric-value {
     font-size: 1.5rem;
+  }
+
+  .range-most-likely {
+    font-size: 1.5rem;
+  }
+
+  .range-min,
+  .range-max {
+    font-size: 0.7rem;
+    min-width: 50px;
+  }
+
+  .range-line-visual {
+    margin: 0 var(--space-sm);
   }
 }
 

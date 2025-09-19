@@ -897,6 +897,11 @@ class DataManipulator {
       reasoning += " (10% reduction applied for risk mitigation)";
     }
 
+    // Calculate range for promotion recommendation
+    const marginOfError = 1.645 * stdDev; // 90% confidence interval
+    const minAmount = Math.max(0, recommendedAmount - marginOfError);
+    const maxAmount = recommendedAmount + marginOfError;
+
     return {
       recommended_amount: Math.round(recommendedAmount * 100) / 100,
       confidence: Math.round(confidence * 100) / 100,
@@ -904,6 +909,12 @@ class DataManipulator {
       risk_level: riskLevel,
       coefficient_of_variation:
         Math.round(coefficientOfVariation * 1000) / 1000,
+      // Range format for frontend
+      range: {
+        min: Math.round(minAmount * 100) / 100,
+        max: Math.round(maxAmount * 100) / 100,
+        most_likely: Math.round(recommendedAmount * 100) / 100,
+      },
     };
   }
 
@@ -960,6 +971,12 @@ class DataManipulator {
       confidence: Math.round(confidence * 100) / 100,
       reasoning,
       relative_std_dev: Math.round(relativeStdDev * 1000) / 1000,
+      // Range format for frontend
+      range: {
+        min: Math.round(lowerBound * 100) / 100,
+        max: Math.round(upperBound * 100) / 100,
+        most_likely: Math.round(predictedGGR * 100) / 100,
+      },
     };
   }
 
@@ -1020,6 +1037,12 @@ class DataManipulator {
       reasoning,
       coefficient_of_variation:
         Math.round(coefficientOfVariation * 1000) / 1000,
+      // Range format for frontend
+      range: {
+        min: Math.round(lowerBound * 100) / 100,
+        max: Math.round(upperBound * 100) / 100,
+        most_likely: Math.round(predictedNPAmount * 100) / 100,
+      },
     };
   }
 }
