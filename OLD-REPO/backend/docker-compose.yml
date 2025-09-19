@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  backend:
+    container_name: ai-fazi-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # You can override these via env_file or compose overrides
+      # JWT_SECRET: replace-me
+      # LOGIN_USERNAME: fazi-admin
+      # LOGIN_PASSWORD: "#demo-transfer-uniform-collar!"
+      # OPENAI_API_KEY: ""
+    env_file:
+      - ./.env
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    container_name: ai-fazi-frontend
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80" # keep host 5173 to match CORS-allowed origins
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -3,9 +3,8 @@
 *.xlsx
 *.xls
 
-!data/*.xlsx
-!data/*.xls
-
+# Do not track Excel files anywhere, including data/
+# (the server will create data/uploads at runtime)
 
 node_modules/
 uploads/
