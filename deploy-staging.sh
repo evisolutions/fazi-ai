@@ -18,18 +18,8 @@ fi
 # Ensure node and pnpm are available
 export PATH="/c/Program Files/nodejs:/c/ProgramData/ComposerSetup/bin:$PATH"
 
-# Build frontend for staging
-if [ -d "OLD-REPO/frontend" ]; then
-  echo "Building frontend for staging..."
-  cd OLD-REPO/frontend
-  
-  # Copy staging environment file
-  cp env.staging .env
-  
-  pnpm install || { echo "pnpm install failed"; exit 1; }
-  pnpm run build || { echo "Frontend build failed"; exit 1; }
-  cd ../..
-fi
+# Frontend will be built inside Docker container
+# No need for local build since Dockerfile handles it
 
 # Build backend
 if [ -d "OLD-REPO/backend" ]; then

@@ -1,6 +1,6 @@
-# Frontend Dockerfile for Vite + Vue 3 dev server
-# Development-oriented image; serves on port 5173
-FROM node:20-alpine
+# Frontend Dockerfile for Vite + Vue 3 production build
+# Multi-stage build: build + serve with nginx
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -8,10 +8,17 @@ WORKDIR /app
 COPY package.json package-lock.json* .npmrc* ./
 RUN npm ci || npm i --no-audit --no-fund
 
-# Copy source
+# Copy source and build
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
+# Production stage with nginx
+FROM nginx:alpine
 
-# Run Vite dev server binding to 0.0.0.0 so it's reachable from host
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Copy built files from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Nginx runs automatically
