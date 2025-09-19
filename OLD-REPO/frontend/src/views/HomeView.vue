@@ -3,7 +3,7 @@ import { shallowRef, ref, watch, nextTick, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useGambaStore } from '@/stores/gamba'
-import { useTestStore } from '@/stores/test'
+// import { useTestStore } from '@/stores/test' // Hidden for production
 import { useThemeStore } from '@/stores/theme'
 import { useChatStore } from '@/stores/chat'
 import { useRouter } from 'vue-router'
@@ -13,11 +13,69 @@ import { marked } from 'marked'
 const tab = ref(1)
 const gamba = useGambaStore()
 const auth = useAuthStore()
-const test = useTestStore()
+// const test = useTestStore() // Hidden for production
+const backendUrl = import.meta.env.VITE_APP_API_BASE_URL || 'https://fazi.api.evi.rs'
 const theme = useThemeStore()
 const chatStore = useChatStore()
 const router = useRouter()
 const loading_data = ref(false)
+
+// Multi-step form state
+const currentStep = ref(1)
+const totalSteps = 6
+
+// Step configuration
+const steps = [
+  {
+    id: 1,
+    title: 'Data Files',
+    icon: 'mdi-file-document-outline',
+  },
+  {
+    id: 2,
+    title: 'ROI/NP Combinations',
+    icon: 'mdi-chart-line',
+  },
+  {
+    id: 3,
+    title: 'Market & Partner',
+    icon: 'mdi-map-marker-outline',
+  },
+  {
+    id: 4,
+    title: 'Game Filters',
+    icon: 'mdi-filter-outline',
+  },
+  {
+    id: 5,
+    title: 'Numeric Filters',
+    icon: 'mdi-sort-numeric-variant',
+  },
+  {
+    id: 6,
+    title: 'Date Range',
+    icon: 'mdi-calendar-outline',
+  },
+]
+
+// Step navigation functions
+const nextStep = () => {
+  if (currentStep.value < totalSteps) {
+    currentStep.value++
+  }
+}
+
+const prevStep = () => {
+  if (currentStep.value > 1) {
+    currentStep.value--
+  }
+}
+
+const goToStep = (step: number) => {
+  if (step >= 1 && step <= totalSteps) {
+    currentStep.value = step
+  }
+}
 
 // Sorting state for tables
 const sortColumn = ref('')
@@ -185,7 +243,7 @@ const simulateCalculate = async () => {
       return
     }
     formData.append('training_data', file_one.value)
-    console.log('training_data file attached:', file_one.value.name)
+    // console.log('training_data file attached:', file_one.value.name) // Hidden for production
   }
 
   if (file_two.value) {
@@ -196,20 +254,20 @@ const simulateCalculate = async () => {
       return
     }
     formData.append('game_data', file_two.value)
-    console.log('game_data file attached:', file_two.value.name)
+    // console.log('game_data file attached:', file_two.value.name) // Hidden for production
   }
 
   try {
     loading_data.value = true
     // Switch to Results tab to show loading state
     tab.value = 2
-    const response = await axios.post(`${test.backend_url}/api/calculate`, formData, {
+    const response = await axios.post(`${backendUrl}/api/calculate`, formData, {
       headers: {
         Authorization: `Bearer ${auth.token}`,
         'Content-Type': 'multipart/form-data',
       },
     })
-    console.log('response', response.data)
+    // console.log('response', response.data) // Hidden for production
     result_data.value = response.data.data
 
     // Store data in chat store for AI assistance
@@ -221,7 +279,7 @@ const simulateCalculate = async () => {
       `Calculate response from ${new Date().toLocaleString('sr-RS')}`,
     )
     if (saveResult.success) {
-      console.log('✅ Response saved as mock data to localStorage')
+      // console.log('✅ Response saved as mock data to localStorage') // Hidden for production
     } else {
       console.warn('⚠️ Failed to save mock data:', saveResult.error)
     }
@@ -236,7 +294,7 @@ const simulateCalculate = async () => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       // Token expired or invalid, try to login again
       auth.logout()
-      console.log('Token expired, please try again')
+      // console.log('Token expired, please try again') // Hidden for production
     }
   }
 }
@@ -251,7 +309,7 @@ const useMockData = async () => {
       nextTick(() => {
         setupDataRender()
       })
-      console.log('✅ Mock data loaded successfully')
+      // console.log('✅ Mock data loaded successfully') // Hidden for production
     } else {
       alert(result.error || 'Failed to load mock data')
     }
@@ -369,7 +427,7 @@ const loadChatMockData = async () => {
   try {
     const result = chatStore.loadChatMockData()
     if (result.success) {
-      console.log('✅ Chat mock data loaded successfully')
+      // console.log('✅ Chat mock data loaded successfully') // Hidden for production
       // Scroll to bottom to show loaded messages
       nextTick(() => {
         scrollToBottom()
@@ -515,7 +573,7 @@ function analyzeDateData(group: any) {
     }
   })
 
-  console.log('Date Analysis for Group', group.id, ':', analysis)
+  // console.log('Date Analysis for Group', group.id, ':', analysis) // Hidden for production
   return analysis
 }
 
@@ -527,14 +585,14 @@ const formatDataForChart = (group: any) => {
 
   let dates_start = group_copy.data.map((item: any) => item[15])
 
-  // Debug: Log the raw date values
-  console.log('Raw date values for group', group.id, ':', dates_start.slice(0, 10)) // Show first 10 values
+  // Debug: Log the raw date values (hidden for production)
+  // console.log('Raw date values for group', group.id, ':', dates_start.slice(0, 10)) // Show first 10 values
 
   // Use the new dateToMonthYear function that handles both Date objects and serial numbers
   let labels_map = dates_start.map((item: any) => dateToMonthYear(item))
 
-  // Debug: Log the converted labels
-  console.log('Converted labels for group', group.id, ':', labels_map.slice(0, 10)) // Show first 10 labels
+  // Debug: Log the converted labels (hidden for production)
+  // console.log('Converted labels for group', group.id, ':', labels_map.slice(0, 10)) // Show first 10 labels
 
   // Filter out invalid dates and group them separately
   let valid_labels = labels_map.filter((label: any) => label !== 'Invalid Date')
@@ -606,7 +664,7 @@ const simulateComplete = async () => {
 
   try {
     const response = await axios.post(
-      `${test.backend_url}/api/test`,
+      `${backendUrl}/api/test`,
       {
         message: 'Give me a funny joke',
       },
@@ -616,14 +674,14 @@ const simulateComplete = async () => {
         },
       },
     )
-    console.log('response', response)
+    // console.log('response', response) // Hidden for production
   } catch (error: any) {
     console.error('error', error)
     alert(error.response?.data?.error || 'An error occurred')
     if (error.response?.status === 401 || error.response?.status === 403) {
       // Token expired or invalid, try to login again
       auth.logout()
-      console.log('Token expired, please try again')
+      // console.log('Token expired, please try again') // Hidden for production
     }
   }
 }
@@ -845,7 +903,7 @@ const loadDefaultFiles = async () => {
       file_two.value = allGamesFile
     }
   } catch (error) {
-    console.log('Default files not found or could not be loaded:', error)
+    // console.log('Default files not found or could not be loaded:', error) // Hidden for production
   }
 }
 
@@ -924,384 +982,466 @@ const loadDefaultFiles = async () => {
       <!-- Parameters Tab -->
       <v-tabs-window-item :value="1" class="tab-panel animate-fade-in">
         <div class="panel-container">
-          <!-- File Upload Section -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-file-document-outline" />
-              </div>
-              <div>
-                <h2 class="section-title">Data Files</h2>
-                <p class="section-description">Upload your training and game data files</p>
-              </div>
-            </div>
-
-            <div class="file-upload-grid">
-              <div class="file-upload-card">
-                <div class="upload-area pt-6" :class="{ 'has-file': file_one }">
-                  <div class="upload-icon">
-                    <v-icon icon="mdi-tray-arrow-up" />
+          <!-- Main Form Card -->
+          <div class="main-form-card">
+            <!-- Step Progress Indicator -->
+            <div class="step-progress-container">
+              <div class="step-progress">
+                <div
+                  v-for="(step, index) in steps"
+                  :key="step.id"
+                  class="step-item"
+                  :class="{
+                    active: currentStep === step.id,
+                    completed: currentStep > step.id,
+                    clickable: true,
+                  }"
+                  @click="goToStep(step.id)"
+                >
+                  <div class="step-circle">
+                    <v-icon
+                      v-if="currentStep > step.id"
+                      icon="mdi-check"
+                      class="step-icon completed-icon"
+                    />
+                    <v-icon v-else :icon="step.icon" class="step-icon" />
                   </div>
-                  <h3 class="upload-title">Training Data</h3>
-                  <p class="upload-description">Upload your training data Excel file</p>
-                  <input
-                    type="file"
-                    ref="fileOneInput"
-                    @change="handleFileOneChange"
-                    accept=".xlsx,.xls"
-                    class="file-input"
-                  />
-                  <button class="upload-button" @click="handleFileOneClick">
-                    {{ file_one ? 'Change File' : 'Choose File' }}
-                  </button>
-                  <div v-if="file_one" class="file-info">
-                    <div class="file-name">{{ file_one.name }}</div>
-                    <div class="file-size">{{ formatFileSize(file_one.size) }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="file-upload-card">
-                <div class="upload-area pt-6" :class="{ 'has-file': file_two }">
-                  <div class="upload-icon">
-                    <v-icon icon="mdi-tray-arrow-up" />
-                  </div>
-                  <h3 class="upload-title">Game Data</h3>
-                  <p class="upload-description">Upload your game data Excel file</p>
-                  <input
-                    type="file"
-                    ref="fileTwoInput"
-                    @change="handleFileTwoChange"
-                    accept=".xlsx,.xls"
-                    class="file-input"
-                  />
-                  <button class="upload-button" @click="handleFileTwoClick">
-                    {{ file_two ? 'Change File' : 'Choose File' }}
-                  </button>
-                  <div v-if="file_two" class="file-info">
-                    <div class="file-name">{{ file_two.name }}</div>
-                    <div class="file-size">{{ formatFileSize(file_two.size) }}</div>
+                  <div class="step-content">
+                    <div class="step-title">{{ step.title }}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Default Files Button -->
-            <div class="default-files-section">
-              <button class="default-files-button" @click="loadDefaultFiles">
-                <v-icon icon="mdi-file-document-multiple" class="button-icon" />
-                Use Default Files
-              </button>
-              <p class="default-files-description">
-                Load default training_data.xlsx and all_games.xlsx files
-              </p>
-            </div>
-          </div>
+            <!-- Step Content -->
+            <div class="step-content-container">
+              <!-- Step 1: Data Files -->
+              <div v-if="currentStep === 1" class="step-panel">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-file-document-outline" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">Data Files</h2>
+                      <p class="section-description">Upload your training and game data files</p>
+                    </div>
+                  </div>
 
-          <!-- ROI/NP Table Section -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-chart-line" />
-              </div>
-              <div>
-                <h2 class="section-title">ROI/NP Combinations</h2>
-                <p class="section-description">Select ROI and NP combinations for analysis</p>
-              </div>
-            </div>
+                  <div class="file-upload-grid">
+                    <div class="file-upload-card">
+                      <div class="upload-area pt-6" :class="{ 'has-file': file_one }">
+                        <div class="upload-icon">
+                          <v-icon icon="mdi-tray-arrow-up" />
+                        </div>
+                        <h3 class="upload-title">Training Data</h3>
+                        <p class="upload-description">Upload your training data Excel file</p>
+                        <input
+                          type="file"
+                          ref="fileOneInput"
+                          @change="handleFileOneChange"
+                          accept=".xlsx,.xls"
+                          class="file-input"
+                        />
+                        <button class="upload-button" @click="handleFileOneClick">
+                          {{ file_one ? 'Change File' : 'Choose File' }}
+                        </button>
+                        <div v-if="file_one" class="file-info">
+                          <div class="file-name">{{ file_one.name }}</div>
+                          <div class="file-size">{{ formatFileSize(file_one.size) }}</div>
+                        </div>
+                      </div>
+                    </div>
 
-            <div class="roi-np-table-container">
-              <div class="table-wrapper">
-                <table class="roi-np-table">
-                  <thead>
-                    <tr>
-                      <th>ROI Range</th>
-                      <th>NP Range</th>
-                      <th>Select</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in gamba.roi_np_table_data" :key="`${row.roi_id}-${row.np_id}`">
-                      <td>{{ row.roi }}</td>
-                      <td>{{ row.np }}</td>
-                      <td>
-                        <label class="checkbox-container">
-                          <input type="checkbox" v-model="row.selected" class="checkbox-input" />
-                          <span class="checkmark"></span>
-                        </label>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+                    <div class="file-upload-card">
+                      <div class="upload-area pt-6" :class="{ 'has-file': file_two }">
+                        <div class="upload-icon">
+                          <v-icon icon="mdi-tray-arrow-up" />
+                        </div>
+                        <h3 class="upload-title">Game Data</h3>
+                        <p class="upload-description">Upload your game data Excel file</p>
+                        <input
+                          type="file"
+                          ref="fileTwoInput"
+                          @change="handleFileTwoChange"
+                          accept=".xlsx,.xls"
+                          class="file-input"
+                        />
+                        <button class="upload-button" @click="handleFileTwoClick">
+                          {{ file_two ? 'Change File' : 'Choose File' }}
+                        </button>
+                        <div v-if="file_two" class="file-info">
+                          <div class="file-name">{{ file_two.name }}</div>
+                          <div class="file-size">{{ formatFileSize(file_two.size) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-          <!-- Market & Partner Selection -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-map-marker-outline" />
-              </div>
-              <div>
-                <h2 class="section-title">Market & Partner Selection</h2>
-                <p class="section-description">Choose markets and partners for analysis</p>
-              </div>
-            </div>
-
-            <div class="filters-grid">
-              <div class="filter-group">
-                <label class="filter-label">Markets (Trziste)</label>
-                <v-autocomplete
-                  v-model="trziste_data"
-                  :items="gamba.available_trziste_data"
-                  item-title="label"
-                  item-value="trziste_id"
-                  multiple
-                  chips
-                  closable-chips
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select markets..."
-                  clearable
-                  selected-class="no-highlight"
-                  class="vuetify-autocomplete"
-                />
-              </div>
-
-              <div class="filter-group">
-                <label class="filter-label">Partners</label>
-                <v-autocomplete
-                  v-model="partner_data"
-                  :items="gamba.available_partner_data"
-                  item-title="label"
-                  item-value="partner_id"
-                  multiple
-                  chips
-                  closable-chips
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select partners..."
-                  clearable
-                  selected-class="no-highlight"
-                  class="vuetify-autocomplete"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Game Filters -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-filter-outline" />
-              </div>
-              <div>
-                <h2 class="section-title">Game Filters</h2>
-                <p class="section-description">
-                  Filter games by volatility, features, and categories
-                </p>
-              </div>
-            </div>
-
-            <div class="filters-grid">
-              <div class="filter-group">
-                <label class="filter-label">Game Volatility</label>
-                <v-select
-                  v-model="selected_volatility"
-                  :items="gamba.volatility_data"
-                  item-title="label"
-                  item-value="volatility_id"
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="All Volatilities"
-                  clearable
-                  selected-class="no-highlight"
-                  class="vuetify-autocomplete"
-                />
-              </div>
-
-              <div class="filter-group">
-                <label class="filter-label">Game Features</label>
-                <v-autocomplete
-                  v-model="selected_features"
-                  :items="gamba.feature_data"
-                  item-title="label"
-                  item-value="feature_id"
-                  multiple
-                  chips
-                  closable-chips
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select features..."
-                  clearable
-                  selected-class="no-highlight"
-                  class="vuetify-autocomplete"
-                />
-              </div>
-
-              <div class="filter-group">
-                <label class="filter-label">Game Categories</label>
-                <v-autocomplete
-                  v-model="selected_game_categories"
-                  :items="gamba.game_category_data"
-                  item-title="label"
-                  item-value="game_category_id"
-                  multiple
-                  chips
-                  closable-chips
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select categories..."
-                  clearable
-                  selected-class="no-highlight"
-                  class="vuetify-autocomplete"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Numeric Filters -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-sort-numeric-variant" />
-              </div>
-              <div>
-                <h2 class="section-title">Numeric Filters</h2>
-                <p class="section-description">
-                  Set ranges for hit frequency, exposure, and bet amounts
-                </p>
-              </div>
-            </div>
-
-            <div class="numeric-filters-grid">
-              <div class="filter-group">
-                <label class="filter-label">Hit Frequency Range</label>
-                <div class="range-inputs">
-                  <input
-                    type="number"
-                    v-model="hit_frequency_from"
-                    placeholder="From"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
-                  <span class="range-separator">-</span>
-                  <input
-                    type="number"
-                    v-model="hit_frequency_to"
-                    placeholder="To"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
+                  <!-- Default Files Button (hidden for production) -->
+                  <!-- <div class="default-files-section">
+                    <button class="default-files-button" @click="loadDefaultFiles">
+                      <v-icon icon="mdi-file-document-multiple" class="button-icon" />
+                      Use Default Files
+                    </button>
+                    <p class="default-files-description">
+                      Load default training_data.xlsx and all_games.xlsx files
+                    </p>
+                  </div> -->
                 </div>
               </div>
 
-              <div class="filter-group">
-                <label class="filter-label">Max Exposure Range</label>
-                <div class="range-inputs">
-                  <input
-                    type="number"
-                    v-model="max_exposure_from"
-                    placeholder="From"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
-                  <span class="range-separator">-</span>
-                  <input
-                    type="number"
-                    v-model="max_exposure_to"
-                    placeholder="To"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
+              <!-- Step 2: ROI/NP Combinations -->
+              <div v-if="currentStep === 2" class="step-panel">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-chart-line" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">ROI/NP Combinations</h2>
+                      <p class="section-description">Select ROI and NP combinations for analysis</p>
+                    </div>
+                  </div>
+
+                  <div class="roi-np-table-container">
+                    <div class="table-wrapper">
+                      <table class="roi-np-table">
+                        <thead>
+                          <tr>
+                            <th>ROI Range</th>
+                            <th>NP Range</th>
+                            <th>Select</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="row in gamba.roi_np_table_data"
+                            :key="`${row.roi_id}-${row.np_id}`"
+                          >
+                            <td>{{ row.roi }}</td>
+                            <td>{{ row.np }}</td>
+                            <td>
+                              <label class="checkbox-container">
+                                <input
+                                  type="checkbox"
+                                  v-model="row.selected"
+                                  class="checkbox-input"
+                                />
+                                <span class="checkmark"></span>
+                              </label>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div class="filter-group">
-                <label class="filter-label">Min/Max Bet Range</label>
-                <div class="range-inputs">
-                  <input
-                    type="number"
-                    v-model="min_max_bet_from"
-                    placeholder="From"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
-                  <span class="range-separator">-</span>
-                  <input
-                    type="number"
-                    v-model="min_max_bet_to"
-                    placeholder="To"
-                    class="range-input"
-                    min="0"
-                    step="0.01"
-                  />
+              <!-- Step 3: Market & Partner Selection -->
+              <div v-if="currentStep === 3" class="step-panel">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-map-marker-outline" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">Market & Partner Selection</h2>
+                      <p class="section-description">Choose markets and partners for analysis</p>
+                    </div>
+                  </div>
+
+                  <div class="filters-grid">
+                    <div class="filter-group">
+                      <label class="filter-label">Markets (Trziste)</label>
+                      <v-autocomplete
+                        v-model="trziste_data"
+                        :items="gamba.available_trziste_data"
+                        item-title="label"
+                        item-value="trziste_id"
+                        multiple
+                        chips
+                        closable-chips
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select markets..."
+                        clearable
+                        selected-class="no-highlight"
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">Partners</label>
+                      <v-autocomplete
+                        v-model="partner_data"
+                        :items="gamba.available_partner_data"
+                        item-title="label"
+                        item-value="partner_id"
+                        multiple
+                        chips
+                        closable-chips
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select partners..."
+                        clearable
+                        selected-class="no-highlight"
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Date Range Filters -->
-          <div class="section-card">
-            <div class="section-header">
-              <div class="section-icon">
-                <v-icon icon="mdi-calendar-outline" />
+              <!-- Step 4: Game Filters -->
+              <div v-if="currentStep === 4" class="step-panel">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-filter-outline" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">Game Filters</h2>
+                      <p class="section-description">
+                        Filter games by volatility, features, and categories
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="filters-grid">
+                    <div class="filter-group">
+                      <label class="filter-label">Game Volatility</label>
+                      <v-select
+                        v-model="selected_volatility"
+                        :items="gamba.volatility_data"
+                        item-title="label"
+                        item-value="volatility_id"
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="All Volatilities"
+                        clearable
+                        selected-class="no-highlight"
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">Game Features</label>
+                      <v-autocomplete
+                        v-model="selected_features"
+                        :items="gamba.feature_data"
+                        item-title="label"
+                        item-value="feature_id"
+                        multiple
+                        chips
+                        closable-chips
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select features..."
+                        clearable
+                        selected-class="no-highlight"
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">Game Categories</label>
+                      <v-autocomplete
+                        v-model="selected_game_categories"
+                        :items="gamba.game_category_data"
+                        item-title="label"
+                        item-value="game_category_id"
+                        multiple
+                        chips
+                        closable-chips
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select categories..."
+                        clearable
+                        selected-class="no-highlight"
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h2 class="section-title">Date Range</h2>
-                <p class="section-description">Set the date range for game release analysis</p>
+
+              <!-- Step 5: Numeric Filters -->
+              <div v-if="currentStep === 5" class="step-panel">
+                <!-- Numeric Filters -->
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-sort-numeric-variant" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">Numeric Filters</h2>
+                      <p class="section-description">
+                        Set ranges for hit frequency, exposure, and bet amounts
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="numeric-filters-grid">
+                    <div class="filter-group">
+                      <label class="filter-label">Hit Frequency Range</label>
+                      <div class="range-inputs">
+                        <input
+                          type="number"
+                          v-model="hit_frequency_from"
+                          placeholder="From"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                        <span class="range-separator">-</span>
+                        <input
+                          type="number"
+                          v-model="hit_frequency_to"
+                          placeholder="To"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">Max Exposure Range</label>
+                      <div class="range-inputs">
+                        <input
+                          type="number"
+                          v-model="max_exposure_from"
+                          placeholder="From"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                        <span class="range-separator">-</span>
+                        <input
+                          type="number"
+                          v-model="max_exposure_to"
+                          placeholder="To"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">Min/Max Bet Range</label>
+                      <div class="range-inputs">
+                        <input
+                          type="number"
+                          v-model="min_max_bet_from"
+                          placeholder="From"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                        <span class="range-separator">-</span>
+                        <input
+                          type="number"
+                          v-model="min_max_bet_to"
+                          placeholder="To"
+                          class="range-input"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="filters-grid">
-              <div class="filter-group">
-                <label class="filter-label">Start Date</label>
-                <v-date-input
-                  v-model="start_date"
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select start date"
-                  clearable
-                  class="vuetify-autocomplete"
-                />
+              <!-- Step 6: Date Range -->
+              <div v-if="currentStep === 6" class="step-panel">
+                <div class="section-card">
+                  <div class="section-header">
+                    <div class="section-icon">
+                      <v-icon icon="mdi-calendar-outline" />
+                    </div>
+                    <div>
+                      <h2 class="section-title">Date Range</h2>
+                      <p class="section-description">
+                        Set the date range for game release analysis
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="filters-grid">
+                    <div class="filter-group">
+                      <label class="filter-label">Start Date</label>
+                      <v-date-input
+                        v-model="start_date"
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select start date"
+                        clearable
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+
+                    <div class="filter-group">
+                      <label class="filter-label">End Date</label>
+                      <v-date-input
+                        v-model="end_date"
+                        variant="outlined"
+                        density="comfortable"
+                        placeholder="Select end date"
+                        clearable
+                        class="vuetify-autocomplete"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div class="filter-group">
-                <label class="filter-label">End Date</label>
-                <v-date-input
-                  v-model="end_date"
-                  variant="outlined"
-                  density="comfortable"
-                  placeholder="Select end date"
-                  clearable
-                  class="vuetify-autocomplete"
-                />
+              <!-- Step Navigation -->
+              <div class="step-navigation">
+                <button
+                  class="nav-button back-button"
+                  @click="prevStep"
+                  :disabled="currentStep === 1"
+                >
+                  <v-icon icon="mdi-arrow-left" />
+                  Back
+                </button>
+
+                <div class="step-info">Step {{ currentStep }} of {{ totalSteps }}</div>
+
+                <button
+                  v-if="currentStep < totalSteps"
+                  class="nav-button next-button"
+                  @click="nextStep"
+                >
+                  Next
+                  <v-icon icon="mdi-arrow-right" />
+                </button>
+
+                <button
+                  v-else
+                  class="nav-button submit-button"
+                  @click="simulateCalculate"
+                  :disabled="loading_data"
+                >
+                  <div v-if="loading_data" class="loading-spinner"></div>
+                  <span v-else>Calculate</span>
+                </button>
               </div>
-            </div>
-          </div>
 
-          <!-- Calculate Button Section -->
-          <div class="section-card">
-            <div class="action-section">
-              <button class="action-button" @click="simulateCalculate" :disabled="loading_data">
-                <div v-if="loading_data" class="loading-spinner"></div>
-                <span v-else>Calculate</span>
-              </button>
-
-              <button
-                v-if="chatStore.hasMockData"
-                class="action-button secondary"
-                @click="useMockData"
-                :disabled="loading_data"
-              >
-                📊 Use Mock Data
-              </button>
+              <!-- Mock Data Button (hidden for production) -->
+              <!-- <div v-if="chatStore.hasMockData" class="mock-data-section">
+                <button
+                  class="action-button secondary"
+                  @click="useMockData"
+                  :disabled="loading_data"
+                >
+                  📊 Use Mock Data
+                </button>
+              </div> -->
             </div>
           </div>
         </div>
@@ -1666,7 +1806,8 @@ const loadDefaultFiles = async () => {
                   bg-color="transparent"
                   flat
                 ></v-textarea>
-                <v-btn
+                <!-- Chat Mock Data Button (hidden for production) -->
+                <!-- <v-btn
                   @click="loadChatMockData"
                   :disabled="!chatStore.hasChatMockData"
                   icon="mdi-database-import"
@@ -1680,7 +1821,7 @@ const loadDefaultFiles = async () => {
                       ? `Load chat mock data (${chatStore.chatMockDataInfo?.messageCount || 0} messages)`
                       : 'No chat mock data available'
                   "
-                />
+                /> -->
                 <v-btn
                   @click="sendMessage"
                   :disabled="!currentMessage.trim()"
@@ -3863,6 +4004,314 @@ html .v-application .v-autocomplete__content .v-list-item [class*='highlight'] {
 
 .mock-data-button {
   flex-shrink: 0;
+}
+
+/* Multi-Step Form Styles */
+.main-form-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.step-progress-container {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.step-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+}
+
+.step-progress::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  height: 2px;
+  background: var(--border-color);
+  z-index: 1;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  max-width: 120px;
+}
+
+.step-item.clickable {
+  cursor: pointer;
+}
+
+.step-item.clickable:hover .step-circle {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-surface-variant));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+  transition: all 0.3s ease;
+  border: 2px solid rgb(var(--v-theme-outline));
+  cursor: pointer;
+}
+
+.step-item.active .step-circle {
+  background: rgb(var(--v-theme-primary));
+  border-color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+}
+
+.step-item.completed .step-circle {
+  background: rgb(var(--v-theme-success));
+  border-color: rgb(var(--v-theme-success));
+  color: rgb(var(--v-theme-on-success));
+}
+
+.step-number {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.step-icon {
+  font-size: 1.5rem;
+}
+
+.step-content {
+  text-align: center;
+  max-width: 100px;
+}
+
+.step-title {
+  font-weight: 600;
+  font-size: 0.75rem;
+  margin-bottom: 0.1rem;
+  color: var(--text-primary);
+}
+
+.step-description {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.step-content-container {
+  min-height: 300px;
+  padding: 1.5rem;
+}
+
+.step-panel {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgb(var(--v-theme-outline));
+  background: transparent;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.back-button {
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+  border: 1px solid rgb(var(--v-theme-outline));
+}
+
+.back-button:hover:not(:disabled) {
+  background: rgb(var(--v-theme-surface));
+  transform: translateY(-1px);
+}
+
+.back-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.next-button {
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  border: 1px solid rgb(var(--v-theme-primary));
+}
+
+.next-button:hover {
+  background: rgb(var(--v-theme-primary));
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+.submit-button {
+  background: rgb(var(--v-theme-success));
+  color: rgb(var(--v-theme-on-success));
+  min-width: 120px;
+  border: 1px solid rgb(var(--v-theme-success));
+}
+
+.submit-button:hover:not(:disabled) {
+  background: rgb(var(--v-theme-success));
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.step-info {
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.8rem;
+}
+
+.mock-data-section {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgb(var(--v-theme-outline));
+  background: rgb(var(--v-theme-surface));
+}
+
+.mock-data-section .action-button {
+  background: rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-on-warning));
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.mock-data-section .action-button:hover:not(:disabled) {
+  background: rgb(var(--v-theme-warning));
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+.mock-data-section .action-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Responsive Design for Multi-Step Form */
+@media (max-width: 768px) {
+  .step-progress-container {
+    padding: 0.75rem;
+  }
+
+  .step-content-container {
+    padding: 1rem;
+  }
+
+  .step-progress {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .step-progress::before {
+    display: none;
+  }
+
+  .step-item {
+    flex-direction: row;
+    align-items: center;
+    max-width: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .step-circle {
+    margin-bottom: 0;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+  }
+
+  .step-content {
+    text-align: left;
+    max-width: none;
+    flex: 1;
+  }
+
+  .step-title {
+    font-size: 0.7rem;
+  }
+
+  .step-description {
+    font-size: 0.6rem;
+  }
+
+  .step-navigation {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .nav-button {
+    width: 100%;
+    min-width: auto;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .step-info {
+    order: -1;
+    font-size: 0.75rem;
+  }
+
+  .step-content-container {
+    min-height: 250px;
+  }
+
+  .mock-data-section {
+    padding: 0.75rem 1rem;
+  }
 }
 
 /* Responsive Design */
