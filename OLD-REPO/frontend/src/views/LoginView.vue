@@ -13,29 +13,7 @@
         <!-- Header Section -->
         <div class="login-header">
           <div class="logo-container">
-            <div class="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-            <h1 class="logo-text gradient-text">FAZI AI</h1>
+            <img src="@/assets/logo-dark.svg" alt="FAZI AI" class="logo-image" />
           </div>
           <p class="login-subtitle">Advanced Analytics Platform</p>
         </div>
@@ -338,7 +316,7 @@ const handleLogin = async () => {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   padding: var(--space-lg);
 }
 
@@ -384,14 +362,13 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
-.logo-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--primary-400);
+.logo-image {
+  height: 60px;
+  width: auto;
+  max-width: 200px;
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -403,13 +380,6 @@ const handleLogin = async () => {
   50% {
     transform: scale(1.05);
   }
-}
-
-.logo-text {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.02em;
 }
 
 .login-subtitle {
@@ -648,13 +618,9 @@ const handleLogin = async () => {
     padding: var(--space-xl);
   }
 
-  .logo-text {
-    font-size: 2rem;
-  }
-
-  .logo-container {
-    flex-direction: column;
-    gap: var(--space-sm);
+  .logo-image {
+    height: 50px;
+    max-width: 160px;
   }
 }
 
