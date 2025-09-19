@@ -399,6 +399,12 @@ watch(currentMessage, () => {
 })
 
 function excelSerialToMonthYear(serial: number, use1904System = false) {
+  // Validate input
+  if (serial === null || serial === undefined || isNaN(serial) || !isFinite(serial)) {
+    console.warn('Invalid serial number provided:', serial)
+    return 'Invalid Date'
+  }
+
   // Excel's base date
   const excel1900Epoch = new Date(Date.UTC(1899, 11, 30)) // Dec 30, 1899
   const excel1904Epoch = new Date(Date.UTC(1904, 0, 1)) // Jan 1, 1904
@@ -409,21 +415,89 @@ function excelSerialToMonthYear(serial: number, use1904System = false) {
   // Add days to base date
   const date = new Date(baseDate.getTime() + serial * 86400000)
 
+  // Check if the resulting date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date created from serial:', serial)
+    return 'Invalid Date'
+  }
+
+  // Additional validation: check if date is within reasonable range
+  const currentYear = new Date().getFullYear()
+  const dateYear = date.getFullYear()
+  if (dateYear < 1900 || dateYear > currentYear + 10) {
+    console.warn('Date out of reasonable range:', date, 'from serial:', serial)
+    return 'Invalid Date'
+  }
+
   // Format: "Month YYYY"
   const options = { year: 'numeric', month: 'long' } as any
   return date.toLocaleDateString('en-US', options)
 }
 
+// Utility function to analyze date data and provide insights
+function analyzeDateData(group: any) {
+  const dates_start = group.data.map((item: any) => item[15])
+  const analysis = {
+    totalDates: dates_start.length,
+    validDates: 0,
+    invalidDates: 0,
+    minSerial: Math.min(...dates_start),
+    maxSerial: Math.max(...dates_start),
+    uniqueValues: [...new Set(dates_start)].length,
+    sampleValues: dates_start.slice(0, 5),
+  }
+
+  dates_start.forEach((serial: any) => {
+    const converted = excelSerialToMonthYear(serial)
+    if (converted === 'Invalid Date') {
+      analysis.invalidDates++
+    } else {
+      analysis.validDates++
+    }
+  })
+
+  console.log('Date Analysis for Group', group.id, ':', analysis)
+  return analysis
+}
+
 const formatDataForChart = (group: any) => {
   let group_copy = JSON.parse(JSON.stringify(group))
+
+  // Analyze date data first
+  analyzeDateData(group_copy)
+
   let dates_start = group_copy.data.map((item: any) => item[15]).sort((a: any, b: any) => a - b)
 
+  // Debug: Log the raw date values
+  console.log('Raw date values for group', group.id, ':', dates_start.slice(0, 10)) // Show first 10 values
+
   let labels_map = dates_start.map((item: any) => excelSerialToMonthYear(item))
-  let labels_set = [...new Set(labels_map)]
+
+  // Debug: Log the converted labels
+  console.log('Converted labels for group', group.id, ':', labels_map.slice(0, 10)) // Show first 10 labels
+
+  // Filter out invalid dates and group them separately
+  let valid_labels = labels_map.filter((label: any) => label !== 'Invalid Date')
+  let invalid_count = labels_map.filter((label: any) => label === 'Invalid Date').length
+
+  // Debug: Log invalid date count
+  if (invalid_count > 0) {
+    console.warn(
+      `Group ${group.id} has ${invalid_count} invalid dates out of ${labels_map.length} total dates`,
+    )
+  }
+
+  let labels_set = [...new Set(valid_labels)]
+
+  // Add "Invalid Date" category if there are any invalid dates
+  if (invalid_count > 0) {
+    labels_set.push('Invalid Date')
+  }
 
   let data = labels_set.map((item: any) => ({
     label: item,
-    count: labels_map.filter((xd: any) => xd === item).length,
+    count:
+      item === 'Invalid Date' ? invalid_count : labels_map.filter((xd: any) => xd === item).length,
   }))
 
   return { data, labels_set, canvas_id: `test-${group.id}` }
@@ -715,10 +789,10 @@ const loadDefaultFiles = async () => {
   }
 }
 
-// Load default files when component mounts
-onMounted(() => {
-  loadDefaultFiles()
-})
+// Load default files when component mounts - REMOVED
+// onMounted(() => {
+//   loadDefaultFiles()
+// })
 </script>
 
 <template>
@@ -850,6 +924,17 @@ onMounted(() => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Default Files Button -->
+            <div class="default-files-section">
+              <button class="default-files-button" @click="loadDefaultFiles">
+                <v-icon icon="mdi-file-document-multiple" class="button-icon" />
+                Use Default Files
+              </button>
+              <p class="default-files-description">
+                Load default training_data.xlsx and all_games.xlsx files
+              </p>
             </div>
           </div>
 
@@ -2100,6 +2185,48 @@ onMounted(() => {
 .file-size {
   color: var(--text-tertiary);
   font-size: 0.8rem;
+}
+
+/* Default Files Section */
+.default-files-section {
+  margin-top: var(--space-lg);
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.default-files-button {
+  background: linear-gradient(135deg, var(--secondary-500), var(--secondary-600));
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-xl);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.default-files-button:hover {
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, var(--secondary-400), var(--secondary-500));
+  transform: translateY(-1px);
+}
+
+.default-files-button .button-icon {
+  font-size: 1.2rem;
+}
+
+.default-files-description {
+  margin-top: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0;
 }
 
 /* Modern Form Styles */

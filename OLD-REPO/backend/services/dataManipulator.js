@@ -897,8 +897,22 @@ class DataManipulator {
       reasoning += " (10% reduction applied for risk mitigation)";
     }
 
-    // Calculate range for promotion recommendation
-    const marginOfError = 1.645 * stdDev; // 90% confidence interval
+    // Calculate intelligent range for promotion recommendation
+    // Use adaptive confidence based on data quality and variability
+    let confidenceMultiplier;
+
+    if (coefficientOfVariation < 0.2) {
+      // Low variability - use tighter range (68% confidence)
+      confidenceMultiplier = 1.0;
+    } else if (coefficientOfVariation < 0.4) {
+      // Medium variability - use moderate range (80% confidence)
+      confidenceMultiplier = 1.28;
+    } else {
+      // High variability - use wider range but still tighter than before (85% confidence)
+      confidenceMultiplier = 1.44;
+    }
+
+    const marginOfError = confidenceMultiplier * stdDev;
     const minAmount = Math.max(0, recommendedAmount - marginOfError);
     const maxAmount = recommendedAmount + marginOfError;
 
@@ -943,13 +957,27 @@ class DataManipulator {
     // Use average as primary prediction
     const predictedGGR = average;
 
-    // Calculate confidence interval (95% confidence)
-    const marginOfError = 1.96 * stdDev; // 95% confidence interval
+    // Calculate intelligent range for GGR prediction
+    // Use adaptive confidence based on data quality and variability
+    const relativeStdDev = stdDev / average;
+    let confidenceMultiplier;
+
+    if (relativeStdDev < 0.15) {
+      // Low variability - use tighter range (68% confidence)
+      confidenceMultiplier = 1.0;
+    } else if (relativeStdDev < 0.3) {
+      // Medium variability - use moderate range (80% confidence)
+      confidenceMultiplier = 1.28;
+    } else {
+      // High variability - use wider range but still tighter than before (85% confidence)
+      confidenceMultiplier = 1.44;
+    }
+
+    const marginOfError = confidenceMultiplier * stdDev;
     const lowerBound = predictedGGR - marginOfError;
     const upperBound = predictedGGR + marginOfError;
 
     // Calculate confidence based on relative standard deviation
-    const relativeStdDev = stdDev / average;
     const confidence = Math.max(0, Math.min(100, 100 - relativeStdDev * 150));
 
     let reasoning =
@@ -1005,13 +1033,27 @@ class DataManipulator {
     // Use median as primary prediction (more robust for NP amounts)
     const predictedNPAmount = median;
 
-    // Calculate confidence interval (90% confidence for NP amounts)
-    const marginOfError = 1.645 * stdDev; // 90% confidence interval
+    // Calculate intelligent range for NP prediction
+    // Use adaptive confidence based on data quality and variability
+    const coefficientOfVariation = stdDev / average;
+    let confidenceMultiplier;
+
+    if (coefficientOfVariation < 0.2) {
+      // Low variability - use tighter range (68% confidence)
+      confidenceMultiplier = 1.0;
+    } else if (coefficientOfVariation < 0.4) {
+      // Medium variability - use moderate range (80% confidence)
+      confidenceMultiplier = 1.28;
+    } else {
+      // High variability - use wider range but still tighter than before (85% confidence)
+      confidenceMultiplier = 1.44;
+    }
+
+    const marginOfError = confidenceMultiplier * stdDev;
     const lowerBound = predictedNPAmount - marginOfError;
     const upperBound = predictedNPAmount + marginOfError;
 
     // Calculate confidence based on data consistency
-    const coefficientOfVariation = stdDev / average;
     const confidence = Math.max(
       0,
       Math.min(100, 100 - coefficientOfVariation * 120)
