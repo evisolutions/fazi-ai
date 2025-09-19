@@ -1,13 +1,14 @@
 version: "3.9"
 
+name: fazi-ai-old-repo
+
 services:
   backend:
-    container_name: ai-fazi-backend
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-3000}:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -19,17 +20,20 @@ services:
     env_file:
       - ./.env
     volumes:
-      - ./uploads:/app/uploads
-      - ./data:/app/data
+      - uploads:/app/uploads
+      - data:/app/data
     restart: unless-stopped
 
   frontend:
-    container_name: ai-fazi-frontend
     build:
       context: ../frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173" # expose Vite dev server from container
+      - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  uploads:
+  data:

@@ -13,5 +13,5 @@ COPY . .
 
 EXPOSE 5173
 
-# Run Vite dev server binding to 0.0.0.0 so it’s reachable from host
+# Run Vite dev server binding to 0.0.0.0 so it's reachable from host
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

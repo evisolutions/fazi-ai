@@ -23,11 +23,11 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // Only allow XLSX files
-    if (
-      file.mimetype ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ) {
+    // Only allow real XLSX files by mimetype AND extension
+    const isMimeOk = file.mimetype ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const isExtOk = path.extname(file.originalname).toLowerCase() === ".xlsx";
+    if (isMimeOk && isExtOk) {
       cb(null, true);
     } else {
       cb(new Error("Only XLSX files are allowed"), false);

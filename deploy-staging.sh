@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# FAZI-AI Deploy Script
+# Build and push images
+
+set -e
+
+echo "=========================================="
+echo "FAZI-AI Deploy Script"
+echo "=========================================="
+
+# Check Docker
+if (! docker stats --no-stream > /dev/null 2>&1); then
+  echo "Docker is not running. Please start Docker."
+  exit 1
+fi
+
+# Ensure node and pnpm are available
+export PATH="/c/Program Files/nodejs:/c/ProgramData/ComposerSetup/bin:$PATH"
+
+# Build frontend for staging
+if [ -d "OLD-REPO/frontend" ]; then
+  echo "Building frontend for staging..."
+  cd OLD-REPO/frontend
+  
+  # Copy staging environment file
+  cp env.staging .env
+  
+  pnpm install || { echo "pnpm install failed"; exit 1; }
+  pnpm run build || { echo "Frontend build failed"; exit 1; }
+  cd ../..
+fi
+
+# Build backend
+if [ -d "OLD-REPO/backend" ]; then
+  echo "Building backend..."
+  cd OLD-REPO/backend
+  npm install || { echo "npm install failed"; exit 1; }
+  cd ../..
+fi
+
+# Stop existing containers
+echo "Stopping containers..."
+if [ -f "OLD-REPO/backend/docker-compose.yml" ]; then
+  cd OLD-REPO/backend
+  docker-compose down || echo "No containers to stop"
+  cd ../..
+fi
+
+# Build Docker images
+echo "Building Docker images..."
+if [ -f "OLD-REPO/backend/docker-compose.yml" ]; then
+  cd OLD-REPO/backend
+  docker-compose build --no-cache || { echo "Docker build failed"; exit 1; }
+  docker-compose up -d || { echo "Docker Compose up failed"; exit 1; }
+  cd ../..
+fi
+
+# Tag and push images
+echo "Tagging images..."
+
+# Docker Hub username
+DOCKERHUB_USERNAME="evisolutions"
+
+# Tag backend image
+BACKEND_IMAGE="${DOCKERHUB_USERNAME}/fazi-ai-backend:staging"
+docker tag fazi-ai-old-repo-backend ${BACKEND_IMAGE}
+echo "Tagged: ${BACKEND_IMAGE}"
+
+# Tag frontend image
+FRONTEND_IMAGE="${DOCKERHUB_USERNAME}/fazi-ai-frontend:staging"
+docker tag fazi-ai-old-repo-frontend ${FRONTEND_IMAGE}
+echo "Tagged: ${FRONTEND_IMAGE}"
+
+# Push images to Docker registry
+echo "Pushing images to Docker registry..."
+docker push ${BACKEND_IMAGE} || { echo "Backend push failed"; exit 1; }
+docker push ${FRONTEND_IMAGE} || { echo "Frontend push failed"; exit 1; }
+
+echo "=========================================="
+echo "Done! Images built, tagged and pushed."
+echo "Backend: ${BACKEND_IMAGE}"
+echo "Frontend: ${FRONTEND_IMAGE}"
+echo "=========================================="

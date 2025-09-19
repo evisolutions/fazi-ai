@@ -9,7 +9,5 @@ coverage
 .vscode
 .idea
 *.log
-uploads/*
-!uploads/.gitkeep
-data/*
-!data/.gitkeep
+dist
+build

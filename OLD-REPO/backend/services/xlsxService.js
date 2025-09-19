@@ -66,15 +66,36 @@ class XLSXService {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      // Read the workbook
-      const workbook = XLSX.readFile(filePath);
+      // Read a small chunk to sniff file type
+      const fd = fs.openSync(filePath, 'r');
+      const header = Buffer.alloc(512);
+      fs.readSync(fd, header, 0, Math.min(512, header.length), 0);
+      fs.closeSync(fd);
+
+      const headerStr = header.toString('utf8').toLowerCase();
+      const isZip = header[0] === 0x50 && header[1] === 0x4b; // 'PK' for ZIP/.xlsx
+      const looksLikeHtml = headerStr.includes('<html') || headerStr.includes('<!doctype html') || headerStr.includes('<table');
+
+      if (!isZip) {
+        if (looksLikeHtml) {
+          throw new Error('Uploaded file appears to be HTML (old .xls or web page). Please upload a real .xlsx file exported from Excel/Google Sheets.');
+        }
+        // Not a ZIP and not obvious HTML — still likely invalid for .xlsx
+        throw new Error('Invalid XLSX file format. Ensure the file is a .xlsx (Excel Open XML) document.');
+      }
+
+      // Read the workbook (XLSX is a ZIP-based format)
+      const workbook = XLSX.readFile(filePath, { cellDates: true });
       
       // Get the first worksheet
       const sheetName = workbook.SheetNames[0];
+      if (!sheetName) {
+        throw new Error('No sheets found in the XLSX file.');
+      }
       const worksheet = workbook.Sheets[sheetName];
       
-      // Convert to JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      // Convert to JSON (raw rows)
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false });
       
       return {
         success: true,

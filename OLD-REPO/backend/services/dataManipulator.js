@@ -146,8 +146,8 @@ class DataManipulator {
       return originalData;
     }
 
-    // Map category IDs to labels
-    const requiredCategoryLabels = game_category_ids
+    // Normalize required category IDs (numbers)
+    const requiredCategoryIds = game_category_ids
       .map((id) => {
         const category = variableData.game_categories.find(
           (c) => c.game_category_id === id
@@ -156,26 +156,29 @@ class DataManipulator {
           console.warn(`Category ID ${id} not found in variable data`);
           return null;
         }
-        return category.label;
+        return category.game_category_id;
       })
-      .filter((label) => label !== null); // Remove null values for missing IDs
+      .filter((id) => id !== null);
 
-    if (requiredCategoryLabels.length === 0) {
+    if (requiredCategoryIds.length === 0) {
       console.warn("No valid category IDs found");
       return originalData;
     }
 
     const data = this.deepCopy(originalData);
 
-    // Filter data where GameCategoryID field (index 1) matches ANY of the required categories
+    // Filter data where GameCategoryID field (index 1) matches ANY of the required category IDs
     const filteredData = data.filter((row) => {
       const rowCategory = row[1]; // GameCategoryID is at index 1
-      if (!rowCategory) {
+      if (rowCategory === undefined || rowCategory === null || rowCategory === "") {
         return false;
       }
 
-      // Check if the row's category is in the required categories list
-      return requiredCategoryLabels.includes(rowCategory);
+      // Compare numerically (handles string/number in source)
+      const rowCategoryId = Number(rowCategory);
+      if (Number.isNaN(rowCategoryId)) return false;
+
+      return requiredCategoryIds.includes(rowCategoryId);
     });
 
     return filteredData;

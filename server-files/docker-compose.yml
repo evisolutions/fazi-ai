@@ -1,0 +1,41 @@
+version: "3.9"
+
+name: fazi-ai
+
+services:
+  backend:
+    image: evisolutions/fazi-ai-backend:staging
+    ports:
+      - "7847:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    env_file:
+      - ./.env
+    volumes:
+      - uploads:/app/uploads
+      - data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: evisolutions/fazi-ai-frontend:staging
+    ports:
+      - "9234:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # No environment file needed - API URL is built into the image
+
+volumes:
+  uploads:
+  data:
