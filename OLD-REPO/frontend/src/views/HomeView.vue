@@ -434,21 +434,80 @@ function excelSerialToMonthYear(serial: number, use1904System = false) {
   return date.toLocaleDateString('en-US', options)
 }
 
+// New function to handle JavaScript Date objects (from backend)
+function dateToMonthYear(dateInput: any) {
+  // Handle different input types
+  let date: Date
+
+  if (dateInput instanceof Date) {
+    date = dateInput
+  } else if (typeof dateInput === 'string') {
+    date = new Date(dateInput)
+  } else if (typeof dateInput === 'number') {
+    // If it's a number, try to treat it as Excel serial first
+    return excelSerialToMonthYear(dateInput)
+  } else {
+    console.warn('Invalid date input type:', typeof dateInput, dateInput)
+    return 'Invalid Date'
+  }
+
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date object:', dateInput)
+    return 'Invalid Date'
+  }
+
+  // Additional validation: check if date is within reasonable range
+  const currentYear = new Date().getFullYear()
+  const dateYear = date.getFullYear()
+  if (dateYear < 1900 || dateYear > currentYear + 10) {
+    console.warn('Date out of reasonable range:', date, 'from input:', dateInput)
+    return 'Invalid Date'
+  }
+
+  // Format: "Month YYYY"
+  const options = { year: 'numeric', month: 'long' } as any
+  return date.toLocaleDateString('en-US', options)
+}
+
 // Utility function to analyze date data and provide insights
 function analyzeDateData(group: any) {
   const dates_start = group.data.map((item: any) => item[15])
-  const analysis = {
+
+  // Check if we have Date objects or serial numbers
+  const hasDateObjects = dates_start.some(
+    (item: any) => item instanceof Date || typeof item === 'string',
+  )
+
+  const analysis: any = {
     totalDates: dates_start.length,
     validDates: 0,
     invalidDates: 0,
-    minSerial: Math.min(...dates_start),
-    maxSerial: Math.max(...dates_start),
-    uniqueValues: [...new Set(dates_start)].length,
+    dataType: hasDateObjects ? 'Date objects/strings' : 'Serial numbers',
     sampleValues: dates_start.slice(0, 5),
+    uniqueValues: [
+      ...new Set(
+        dates_start.map((item: any) => (item instanceof Date ? item.toISOString() : String(item))),
+      ),
+    ].length,
   }
 
-  dates_start.forEach((serial: any) => {
-    const converted = excelSerialToMonthYear(serial)
+  // Add min/max only for serial numbers
+  if (!hasDateObjects) {
+    const numericValues = dates_start.filter(
+      (item: any) => typeof item === 'number' && !isNaN(item),
+    )
+    if (numericValues.length > 0) {
+      analysis.minSerial = Math.min(...numericValues)
+      analysis.maxSerial = Math.max(...numericValues)
+    } else {
+      analysis.minSerial = NaN
+      analysis.maxSerial = NaN
+    }
+  }
+
+  dates_start.forEach((dateInput: any) => {
+    const converted = dateToMonthYear(dateInput)
     if (converted === 'Invalid Date') {
       analysis.invalidDates++
     } else {
@@ -466,12 +525,13 @@ const formatDataForChart = (group: any) => {
   // Analyze date data first
   analyzeDateData(group_copy)
 
-  let dates_start = group_copy.data.map((item: any) => item[15]).sort((a: any, b: any) => a - b)
+  let dates_start = group_copy.data.map((item: any) => item[15])
 
   // Debug: Log the raw date values
   console.log('Raw date values for group', group.id, ':', dates_start.slice(0, 10)) // Show first 10 values
 
-  let labels_map = dates_start.map((item: any) => excelSerialToMonthYear(item))
+  // Use the new dateToMonthYear function that handles both Date objects and serial numbers
+  let labels_map = dates_start.map((item: any) => dateToMonthYear(item))
 
   // Debug: Log the converted labels
   console.log('Converted labels for group', group.id, ':', labels_map.slice(0, 10)) // Show first 10 labels

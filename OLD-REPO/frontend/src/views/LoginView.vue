@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -203,12 +203,16 @@ const authStore = useAuthStore()
 
 // Form state
 const form = ref()
-const valid = ref(false)
+const valid = computed(() => {
+  return username.value.length >= 3 && password.value.length >= 6
+})
 const showPassword = ref(false)
 
+const VITE_APP_LOGIN_USERNAME = import.meta.env.VITE_APP_LOGIN_USERNAME || ''
+const VITE_APP_LOGIN_PASSWORD = import.meta.env.VITE_APP_LOGIN_PASSWORD || ''
 // Form data
-const username = ref('')
-const password = ref('')
+const username = ref(VITE_APP_LOGIN_USERNAME)
+const password = ref(VITE_APP_LOGIN_PASSWORD)
 
 // Validation rules
 const usernameRules = [
@@ -223,7 +227,7 @@ const passwordRules = [
 
 // Methods
 const validateForm = () => {
-  valid.value = username.value.length >= 3 && password.value.length >= 6
+  // Validation is handled automatically by the computed property
 }
 
 const handleLogin = async () => {
