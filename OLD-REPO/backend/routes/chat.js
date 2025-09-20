@@ -283,7 +283,9 @@ router.post("/test", authenticateToken, async (req, res) => {
   const { message } = req.body;
   // const result = await openaiService.generateCompletion(message);
   try {
-    let result = await axios.post("http://localhost:8000/test", {
+    // Use Docker service name for internal communication
+    const pythonApiUrl = process.env.PYTHON_API_URL || "http://python-api:8000";
+    let result = await axios.post(`${pythonApiUrl}/test`, {
       message: message,
     });
     res.json(result.data);

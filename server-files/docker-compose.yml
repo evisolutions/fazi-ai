@@ -10,6 +10,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      PYTHON_API_URL: http://python-api:8000
     env_file:
       - ./.env
     volumes:
@@ -18,6 +19,24 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  python-api:
+    image: evisolutions/fazi-ai-python:staging
+    # No external port mapping - only accessible within Docker network
+    environment:
+      PYTHON_ENV: production
+      PORT: 8000
+    env_file:
+      - ./.env
+    volumes:
+      - uploads:/app/uploads
+      - data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/docs"]
       interval: 30s
       timeout: 10s
       retries: 3

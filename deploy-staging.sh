@@ -59,6 +59,11 @@ BACKEND_IMAGE="${DOCKERHUB_USERNAME}/fazi-ai-backend:staging"
 docker tag fazi-ai-old-repo-backend ${BACKEND_IMAGE}
 echo "Tagged: ${BACKEND_IMAGE}"
 
+# Tag python-api image
+PYTHON_IMAGE="${DOCKERHUB_USERNAME}/fazi-ai-python:staging"
+docker tag fazi-ai-old-repo-python-api ${PYTHON_IMAGE}
+echo "Tagged: ${PYTHON_IMAGE}"
+
 # Tag frontend image
 FRONTEND_IMAGE="${DOCKERHUB_USERNAME}/fazi-ai-frontend:staging"
 docker tag fazi-ai-old-repo-frontend ${FRONTEND_IMAGE}
@@ -67,10 +72,12 @@ echo "Tagged: ${FRONTEND_IMAGE}"
 # Push images to Docker registry
 echo "Pushing images to Docker registry..."
 docker push ${BACKEND_IMAGE} || { echo "Backend push failed"; exit 1; }
+docker push ${PYTHON_IMAGE} || { echo "Python API push failed"; exit 1; }
 docker push ${FRONTEND_IMAGE} || { echo "Frontend push failed"; exit 1; }
 
 echo "=========================================="
 echo "Done! Images built, tagged and pushed."
 echo "Backend: ${BACKEND_IMAGE}"
+echo "Python API: ${PYTHON_IMAGE}"
 echo "Frontend: ${FRONTEND_IMAGE}"
 echo "=========================================="
