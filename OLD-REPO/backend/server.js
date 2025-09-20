@@ -51,8 +51,46 @@ app.use((req, res, next) => {
 });
 
 // Health check route for integration smoke tests
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+app.get("/api/health", async (req, res) => {
+  try {
+    const healthService = require('./services/healthService');
+    const health = await healthService.getHealthStatus();
+    
+    const statusCode = health.status === 'ok' ? 200 : 503;
+    res.status(statusCode).json(health);
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Python API test endpoint
+app.get("/api/python/test", async (req, res) => {
+  try {
+    const healthService = require('./services/healthService');
+    const pythonConnection = await healthService.testPythonConnection();
+    const pythonEndpoint = await healthService.testPythonEndpoint();
+    
+    res.json({
+      success: true,
+      message: "Python API test completed",
+      connection: pythonConnection,
+      endpoint: pythonEndpoint,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Python test error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Python API test failed",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API Routes
